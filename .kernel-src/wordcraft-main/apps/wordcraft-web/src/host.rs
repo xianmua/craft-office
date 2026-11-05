@@ -75,6 +75,10 @@ impl Bridge {
         // The browser's save picker is never used, so no save finishes later.
         services.async_saves = None;
         let bridge = self.clone();
+        services.host_plugins = Some(Box::new(move || {
+            bridge.send(&[("type", "wordcraft:plugins".into())]);
+        }));
+        let bridge = self.clone();
         let reported: Rc<Cell<Option<bool>>> = Rc::default();
         services.on_dirty = Some(Box::new(move |dirty: bool| {
             if reported.get() != Some(dirty) && bridge.send(&[("type", "wordcraft:dirty".into()), ("dirty", dirty.into())]) {

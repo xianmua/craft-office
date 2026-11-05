@@ -20,6 +20,7 @@ const emit = defineEmits<{
   (e: 'failed', message: string): void
   (e: 'save', payload: KernelSavePayload): void
   (e: 'dirty', value: boolean): void
+  (e: 'plugins'): void
 }>()
 
 const frame = ref<HTMLIFrameElement>()
@@ -39,6 +40,9 @@ function onMessage(event: MessageEvent) {
       kernelReady = true
       emit('ready')
       flush()
+      break
+    case 'plugins':
+      emit('plugins')
       break
     case 'failed':
       emit('failed', parsed.message)

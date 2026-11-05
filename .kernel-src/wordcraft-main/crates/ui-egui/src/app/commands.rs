@@ -523,6 +523,13 @@ impl WordApp {
                 }
                 json!({"backstage": self.ui.backstage})
             }
+            "ui.hostPlugins" => {
+                // Web, framed: the page shows its plugin manager (`Services::host_plugins`).
+                if let Some(plugins) = self.services.host_plugins.as_ref() {
+                    plugins();
+                }
+                Value::Null
+            }
             "ui.dialog" if s("name") == Some("colors") => {
                 // The font colour's More Colors… (#606); `tab`: standard or custom.
                 let target = colors::Target::cmd("format.color").remember(colors::Remember::FontColor);

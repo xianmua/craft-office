@@ -9,6 +9,7 @@ pub enum ApiError {
     TooLarge,
     Upstream(String),
     Internal(String),
+    NotConfigured(String),
 }
 
 #[derive(Serialize)]
@@ -24,6 +25,7 @@ impl ApiError {
             ApiError::TooLarge => "payload_too_large",
             ApiError::Upstream(_) => "upstream_error",
             ApiError::Internal(_) => "internal_error",
+            ApiError::NotConfigured(_) => "not_configured",
         }
     }
 }
@@ -41,6 +43,7 @@ impl std::fmt::Display for ApiError {
             ApiError::TooLarge => write!(f, "文件超过大小上限"),
             ApiError::Upstream(e) => write!(f, "{e}"),
             ApiError::Internal(e) => write!(f, "{e}"),
+            ApiError::NotConfigured(e) => write!(f, "{e}"),
         }
     }
 }
@@ -52,6 +55,7 @@ impl ResponseError for ApiError {
             ApiError::TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::Upstream(_) => StatusCode::BAD_GATEWAY,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::NotConfigured(_) => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 

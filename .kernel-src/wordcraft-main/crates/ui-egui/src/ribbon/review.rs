@@ -175,4 +175,10 @@ pub(super) fn help(app: &mut WordApp, ui: &mut Ui) {
     group(ui, "Help", None, app, |ui, app| {
         big(ui, app, "help", "Help", "ui.dialog", json!({"name": "about"}), false);
     });
+    // Framed by a page that keeps the files: it owns the plugins, so hand the request over.
+    if app.services.host_plugins.is_some() {
+        group(ui, "Plugins", None, app, |ui, app| {
+            big(ui, app, "options", "Plugins", "ui.hostPlugins", json!({}), false);
+        });
+    }
 }

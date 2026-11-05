@@ -5,6 +5,8 @@ use std::path::Path;
 pub struct AppConfig {
     pub server: ServerConfig,
     pub doc: DocConfig,
+    #[serde(default)]
+    pub plugins: PluginsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -35,6 +37,23 @@ pub struct AllowHost {
     pub host: String,
     #[serde(default = "default_paths")]
     pub paths: Vec<String>,
+}
+
+/// 插件市场：目录里 market.json 是上架目录，installed.json 记录已安装。
+#[derive(Debug, Clone, Deserialize)]
+pub struct PluginsConfig {
+    #[serde(default = "default_plugins_dir")]
+    pub dir: String,
+}
+
+impl Default for PluginsConfig {
+    fn default() -> Self {
+        Self { dir: default_plugins_dir() }
+    }
+}
+
+fn default_plugins_dir() -> String {
+    "./plugins".to_string()
 }
 
 fn default_static_dir() -> String {

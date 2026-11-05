@@ -1,5 +1,6 @@
 mod config;
 mod error;
+mod extract;
 mod guard;
 mod routes;
 
@@ -62,6 +63,13 @@ async fn main() -> std::io::Result<()> {
             )
             .service(routes::doc::doc_meta)
             .service(routes::doc::doc_proxy)
+            .service(routes::ai::ai_chat)
+            .service(routes::mcp::mcp_post)
+            .service(routes::mcp::mcp_hint)
+            .service(routes::plugins::list_plugins)
+            .service(routes::plugins::install_plugin)
+            .service(routes::plugins::uninstall_plugin)
+            .service(routes::plugins::plugin_file)
             .service(routes::page::health)
             .service(routes::page::artcraft_file)
             .service(routes::page::office_page)

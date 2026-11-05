@@ -42,6 +42,9 @@ pub struct Services {
     /// under its own name and format, as on the desktop, and a Save or Save As that keeps
     /// everything makes that name the document's file, so the next Save goes to it.
     pub host_save: Option<HostSaveFn>,
+    /// Web, framed by a page: the user asked for the page's plugin manager (the Help › Plugins
+    /// button, shown only when this is set). The page decides what to open.
+    pub host_plugins: Option<Box<dyn Fn()>>,
     /// Web: told whether the document has unsaved changes after each pass, for the browser's
     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
     pub on_dirty: Option<Box<dyn Fn(bool)>>,

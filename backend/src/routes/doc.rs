@@ -26,13 +26,13 @@ pub struct DocMeta {
     pub supported: bool,
 }
 
-struct Prepared {
-    client: reqwest::Client,
-    target: Url,
+pub(crate) struct Prepared {
+    pub client: reqwest::Client,
+    pub target: Url,
 }
 
 #[derive(Clone, Copy)]
-enum Purpose {
+pub(crate) enum Purpose {
     /// 探测元信息：请求极小，用整体超时即可
     Meta,
     /// 流式转发：不能限制整体耗时（大文件 + 慢上游会被误杀），只限制连接与读空闲
@@ -41,7 +41,7 @@ enum Purpose {
 
 /// 统一的前置处理：白名单校验 → DNS 解析 → IP 校验 → 用解析结果 pin 住地址。
 /// redirect 一律禁止，避免被上游 302 到内网绕过校验。
-async fn prepare(
+pub(crate) async fn prepare(
     cfg: &AppConfig,
     guard: &UrlGuard,
     raw: &str,
@@ -221,7 +221,7 @@ fn size_from_content_range(headers: &reqwest::header::HeaderMap) -> Option<u64> 
     total.parse::<u64>().ok()
 }
 
-fn detect_ext(path: &str) -> String {
+pub(crate) fn detect_ext(path: &str) -> String {
     let name = path.rsplit('/').next().unwrap_or(path);
     match name.rsplit_once('.') {
         Some((_, ext)) if !ext.is_empty() => ext.to_lowercase(),
