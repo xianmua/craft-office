@@ -1,0 +1,247 @@
+﻿{
+    "pass":  40,
+    "fail":  0,
+    "total":  40,
+    "results":  [
+                    {
+                        "id":  "A01",
+                        "name":  "health 200",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A02",
+                        "name":  "health 含关键字段",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A03",
+                        "name":  "GET / 返回 SPA",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A04",
+                        "name":  "GET /office 返回 SPA",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A05",
+                        "name":  "SPA fallback 到任意非 api 路径",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A06",
+                        "name":  "未知 /api/* 返回 JSON 404",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A07",
+                        "name":  "现有静态资源可达",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A08",
+                        "name":  "缺失资产走 SPA 兜底（200 HTML，非 JS）",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A09",
+                        "name":  "/artcraft/ 缺失文件 404",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "A10",
+                        "name":  "/artcraft/ 路径穿越被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B01",
+                        "name":  "meta 白名单文件 200",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B02",
+                        "name":  "meta 缺 url 参数 4xx",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B03",
+                        "name":  "meta 空 url 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B04",
+                        "name":  "meta 非法 url 400 invalid_target",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B05",
+                        "name":  "meta http 协议被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B06",
+                        "name":  "meta 非白名单域名被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B07",
+                        "name":  "meta 非标端口被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B08",
+                        "name":  "meta 路径越界被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B09",
+                        "name":  "meta userinfo 被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "B10",
+                        "name":  "meta 上游 404 报错",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C01",
+                        "name":  "proxy 完整下载且字节数正确",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C02",
+                        "name":  "proxy Content-Type 正确",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C03",
+                        "name":  "proxy inline disposition",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C04",
+                        "name":  "proxy download=true 改 attachment",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C05",
+                        "name":  "proxy 安全响应头",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C06",
+                        "name":  "proxy 缺 url 4xx",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C07",
+                        "name":  "proxy 非白名单域名 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C08",
+                        "name":  "proxy http 协议 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C09",
+                        "name":  "proxy 非标端口 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C10",
+                        "name":  "proxy 路径越界 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "C11",
+                        "name":  "proxy userinfo 400",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D01",
+                        "name":  "127.0.0.1 直连被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D02",
+                        "name":  "::1 直连被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D03",
+                        "name":  "169.254.169.254 元数据地址被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D04",
+                        "name":  "10 段私网被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D05",
+                        "name":  "192.168 私网被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D06",
+                        "name":  "子域名仿冒 host 被拒",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "D07",
+                        "name":  "错误响应体是统一 JSON",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "E01",
+                        "name":  "独立编辑器入口可达",
+                        "result":  "PASS",
+                        "detail":  ""
+                    },
+                    {
+                        "id":  "E02",
+                        "name":  "编辑器 wasm 以正确 MIME 提供",
+                        "result":  "PASS",
+                        "detail":  ""
+                    }
+                ]
+}

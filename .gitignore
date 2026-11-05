@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+target/
+dist/
+
+# 前端构建产物（由 npm run build 生成，不入库）
+backend/static/
+
+# 内核二进制（体积大，按 vendor/artcraft/README.md 放置）
+vendor/artcraft/*.wasm
+vendor/artcraft/*.js
+
+# 环境变量
+.env
+.env.local
+
+# 日志与临时文件
+*.log
+.DS_Store
+Thumbs.db
