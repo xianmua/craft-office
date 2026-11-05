@@ -41,10 +41,15 @@ pub async fn office_page(cfg: web::Data<Arc<AppConfig>>) -> ActixResult<HttpResp
 #[get("/api/health")]
 pub async fn health(cfg: web::Data<Arc<AppConfig>>) -> ActixResult<HttpResponse> {
     let cfg: &Arc<AppConfig> = &cfg;
-    let kernel_dir = Path::new(&cfg.server.static_dir).join("artcraft");
-    let kernel_js = kernel_dir.join("artcraft.js");
-    let kernel_wasm = kernel_dir.join("artcraft_bg.wasm");
-    let kernel_ready = kernel_js.exists() && kernel_wasm.exists();
+    let kernel_dir = Path::new(&cfg.server.static_dir).join("wordcraft");
+    // 内核就位 = index.html + 任一 *_bg.wasm（trunk build 产物，文件名带哈希）
+    let kernel_wasm = std::fs::read_dir(&kernel_dir)
+        .map(|rd| {
+            rd.filter_map(Result::ok)
+                .any(|e| e.file_name().to_string_lossy().ends_with("_bg.wasm"))
+        })
+        .unwrap_or(false);
+    let kernel_ready = kernel_wasm && kernel_dir.join("index.html").exists();
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "ok": true,

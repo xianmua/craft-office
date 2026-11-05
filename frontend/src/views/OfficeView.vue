@@ -49,15 +49,15 @@
 
       <!-- 正文 -->
       <template v-else-if="ready">
-        <EditorHost
-          v-if="mode === 'editor'"
-          ref="hostRef"
+        <KernelFrame
+          v-if="mode === 'editor' && editorKernel"
+          ref="kernelRef"
           class="h-full"
-          :kind="resolvedKind"
-          :binary="binaryData"
-          :file-name="fileName"
-          :read-only="readOnly"
-          @error="onKernelError"
+          :kernel="editorKernel"
+          @ready="onKernelReady"
+          @save="onKernelSave"
+          @dirty="onKernelDirty"
+          @failed="onKernelFailed"
         />
         <FallbackPreview v-else-if="preview" :model="preview" />
       </template>
@@ -66,11 +66,9 @@
     <DocToolbar
       v-if="ready"
       :mode="mode"
-      :read-only="readOnly"
+      :dirty="dirty"
       :size-text="sizeText"
       :entry-count="preview?.entryCount ?? 0"
-      @toggle-readonly="toggleReadOnly"
-      @export="exportFile"
       @copy="copyLink"
       @download-original="downloadOriginal"
     />
@@ -90,12 +88,12 @@
 import { computed, onMounted, nextTick, ref } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { ErrorCircleFilledIcon } from 'tdesign-icons-vue-next'
-import EditorHost from '@/components/EditorHost.vue'
+import KernelFrame from '@/components/KernelFrame.vue'
 import FallbackPreview from '@/components/FallbackPreview.vue'
 import DocToolbar from '@/components/DocToolbar.vue'
 import { useDocSource, fileNameOf } from '@/composables/useDocSource'
 import { downloadUrl, fetchBinary, fetchHealth, fetchMeta } from '@/api/doc'
-import { hasKernelFor, type DocKind } from '@/artcraft/loader'
+import { KERNEL_OF, type KernelSavePayload } from '@/artcraft/loader'
 import { inspectOoxml, type PreviewModel } from '@/artcraft/ooxml'
 
 const { remoteUrl, kind, errorText, parse } = useDocSource()
@@ -105,9 +103,10 @@ const ready = ref(false)
 const mode = ref<'editor' | 'preview' | ''>('')
 const preview = ref<PreviewModel | null>(null)
 const binary = ref<ArrayBuffer | null>(null)
-const readOnly = ref(true)
 const sizeText = ref('')
-const hostRef = ref<InstanceType<typeof EditorHost>>()
+const dirty = ref(false)
+const editorKernel = ref('')
+const kernelRef = ref<InstanceType<typeof KernelFrame>>()
 
 const hasUrl = ref(false)
 const linkDialog = ref(false)
@@ -115,7 +114,6 @@ const linkInput = ref('')
 
 const fileName = computed(() => (remoteUrl.value ? fileNameOf(remoteUrl.value) : ''))
 const kindLabel = computed(() => (kind.value === 'unknown' ? '' : kind.value.toUpperCase()))
-const resolvedKind = computed(() => kind.value as DocKind)
 const binaryData = computed(() => binary.value ?? new ArrayBuffer(0))
 
 function formatSize(size: number | null): string {
@@ -138,6 +136,8 @@ async function load() {
   preview.value = null
   binary.value = null
   sizeText.value = ''
+  dirty.value = false
+  editorKernel.value = ''
 
   try {
     const meta = await fetchMeta(remoteUrl.value)
@@ -147,13 +147,17 @@ async function load() {
     const bytes = await fetchBinary(remoteUrl.value)
     binary.value = bytes
 
-    // 只有后端确认内核产物就位时才尝试加载脚本，避免每次预览都在控制台刷 404
+    const docKind = kind.value === 'unknown' ? undefined : kind.value
+    const kernelName = docKind ? KERNEL_OF[docKind] : undefined
     const health = await fetchHealth().catch(() => ({ editor_kernel_ready: false, max_bytes: 0 }))
-    if (health.editor_kernel_ready && (await hasKernelFor(kind.value as DocKind))) {
+
+    if (health.editor_kernel_ready && kernelName) {
+      // 内核模式：iframe 就绪后由 onKernelReady 投递文档字节
+      editorKernel.value = kernelName
       mode.value = 'editor'
       await nextTick()
     } else {
-      preview.value = inspectOoxml(kind.value as DocKind, new Uint8Array(bytes))
+      preview.value = inspectOoxml(docKind ?? 'docx', new Uint8Array(bytes))
       mode.value = 'preview'
     }
 
@@ -163,6 +167,39 @@ async function load() {
     ready.value = false
   } finally {
     loading.value = false
+  }
+}
+
+function onKernelReady() {
+  if (!binary.value) return
+  kernelRef.value?.openDoc(fileName.value || 'document.docx', binary.value)
+}
+
+function onKernelSave(payload: KernelSavePayload) {
+  const blob = new Blob([payload.bytes])
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = payload.name
+  a.click()
+  URL.revokeObjectURL(a.href)
+  dirty.value = false
+  MessagePlugin.success(`已保存并下载：${payload.name}`)
+}
+
+function onKernelDirty(value: boolean) {
+  dirty.value = value
+}
+
+function onKernelFailed(message: string) {
+  MessagePlugin.error(`内核启动失败：${message}`)
+  if (binary.value) {
+    try {
+      preview.value = inspectOoxml(kind.value === 'unknown' ? 'docx' : kind.value, new Uint8Array(binary.value))
+      mode.value = 'preview'
+    } catch {
+      errorText.value = message
+      ready.value = false
+    }
   }
 }
 
@@ -188,32 +225,6 @@ function fillDemo() {
   linkInput.value = 'https://calibre-ebook.com/downloads/demos/demo.docx'
 }
 
-function toggleReadOnly(value: boolean) {
-  readOnly.value = value
-  hostRef.value?.setReadOnly(value)
-}
-
-async function exportFile() {
-  if (mode.value !== 'editor') {
-    downloadOriginal()
-    return
-  }
-  try {
-    const blob = await hostRef.value?.exportFile()
-    if (!blob) {
-      MessagePlugin.warning('内核未返回可导出的内容')
-      return
-    }
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = fileName.value || 'document'
-    a.click()
-    URL.revokeObjectURL(a.href)
-  } catch (err) {
-    MessagePlugin.error(err instanceof Error ? err.message : '导出失败')
-  }
-}
-
 function downloadOriginal() {
   if (!remoteUrl.value) return
   location.href = downloadUrl(remoteUrl.value)
@@ -225,19 +236,6 @@ async function copyLink() {
     MessagePlugin.success('链接已复制')
   } catch {
     MessagePlugin.warning('复制失败，请手动复制地址栏')
-  }
-}
-
-function onKernelError(message: string) {
-  MessagePlugin.error(`内核初始化失败：${message}`)
-  if (binary.value) {
-    try {
-      preview.value = inspectOoxml(kind.value as DocKind, new Uint8Array(binary.value))
-      mode.value = 'preview'
-    } catch {
-      errorText.value = message
-      ready.value = false
-    }
   }
 }
 

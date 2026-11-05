@@ -9,7 +9,7 @@ npm run build
 
 Write-Host '[2/2] 构建后端…' -ForegroundColor Cyan
 Set-Location -LiteralPath (Join-Path $root 'backend')
-$cargo = if (Get-Command cargo -ErrorAction SilentlyContinue) { 'cargo' } else { 'C:\Users\deren\.cargo\bin\cargo.exe' }
+$cargo = if (Get-Command cargo -ErrorAction SilentlyContinue) { 'cargo' } else { Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe' }
 & $cargo build --release
 
 Write-Host "完成：$root\backend\target\release\artcraft-office.exe" -ForegroundColor Green

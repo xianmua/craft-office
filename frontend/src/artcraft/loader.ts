@@ -1,112 +1,82 @@
 /**
- * ArtCraft 内核适配层：这是整个前端**唯一**强耦合官方 API 的文件。
- * 官方 API 变更时只改这里，上层 OfficeView / EditorHost 不需要动。
+ * ArtCraft 内核适配层：这是整个前端**唯一**强耦合官方内核协议的文件。
+ * 内核协议变更时只改这里，上层 OfficeView / KernelFrame 不需要动。
  *
- * 期望的内核产物（见 vendor/artcraft/README.md）：
- *   /artcraft/artcraft.js      —— 暴露全局 window.ArtCraft = { WordCraft, GridCraft, DeckCraft }
- *   /artcraft/artcraft_bg.wasm —— 由 artcraft.js 自行 fetch 加载
+ * 内核产物（trunk build 输出，见 .kernel-src/wordcraft-main/apps/wordcraft-web）：
+ *   /wordcraft/index.html     —— 完整 WordCraft 应用（eframe wasm）
  *
- * 每个 maker 需提供 create(options) 返回实例，实例需提供 destroy / save / setReadOnly。
- * 方法名做了别名兜底（save | export | exportAsync | toBlob），但契约缺一不可。
+ * 集成协议：postMessage 宿主桥（iframe 带 ?host=parent，源码见
+ * .kernel-src/wordcraft-main/apps/wordcraft-web/src/host.rs）：
+ *   内核 → 宿主：ready{version} / save{name,saveAs,bytes} / dirty{dirty} / failed{error}
+ *   宿主 → 内核：open{name,bytes}（bytes 为 ArrayBuffer / Uint8Array）
+ * 仅同源父页面有效；/office 与 /wordcraft 同源，天然满足。
  */
 
-export type DocKind = 'docx' | 'xlsx' | 'pptx'
+import type { DocKind } from '@/composables/useDocSource'
 
-export interface EditorInstance {
-  destroy(): void
-  save(): Promise<Blob>
-  setReadOnly(value: boolean): void
+export type { DocKind }
+
+/** 各格式对应的内核；gridcraft / deckcraft 产物部署后在此扩展（xlsx → gridcraft、pptx → deckcraft） */
+export const KERNEL_OF: Partial<Record<DocKind, string>> = {
+  docx: 'wordcraft',
 }
 
-export interface CreateOptions {
-  container: HTMLElement
-  binary: ArrayBuffer
-  fileName: string
-  readOnly: boolean
+/** 内核 iframe 地址；?host=parent 启用 postMessage 宿主桥 */
+export function kernelFrameUrl(kernel: string): string {
+  return `/${kernel}/index.html?host=parent`
 }
 
-const KERNEL_SCRIPT = '/artcraft/artcraft.js'
-
-const MAKERS: Record<DocKind, 'WordCraft' | 'GridCraft' | 'DeckCraft'> = {
-  docx: 'WordCraft',
-  xlsx: 'GridCraft',
-  pptx: 'DeckCraft',
+export interface KernelSavePayload {
+  name: string
+  saveAs: boolean
+  bytes: ArrayBuffer
 }
 
-let sdkPromise: Promise<ArtCraftSdk | null> | null = null
+export type KernelEvent =
+  | { type: 'ready' }
+  | { type: 'failed'; message: string }
+  | { type: 'save'; payload: KernelSavePayload }
+  | { type: 'dirty'; value: boolean }
 
-/** 加载内核脚本；缺失或加载失败时返回 null（不抛错，交给降级预览兜底） */
-export function loadKernel(): Promise<ArtCraftSdk | null> {
-  if (sdkPromise) return sdkPromise
-
-  sdkPromise = new Promise<ArtCraftSdk | null>((resolve) => {
-    if (window.ArtCraft) {
-      resolve(window.ArtCraft)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = KERNEL_SCRIPT
-    script.async = true
-    script.onload = () => resolve(window.ArtCraft ?? null)
-    script.onerror = () => {
-      script.remove()
-      resolve(null)
-    }
-    document.head.appendChild(script)
-  })
-
-  return sdkPromise
-}
-
-export async function hasKernelFor(kind: DocKind): Promise<boolean> {
-  const sdk = await loadKernel()
-  if (!sdk) return false
-  const maker = sdk[MAKERS[kind]] as { create?: unknown } | undefined
-  return typeof maker?.create === 'function'
-}
-
-export async function createEditor(
-  kind: DocKind,
-  options: CreateOptions,
-): Promise<EditorInstance | null> {
-  const sdk = await loadKernel()
-  const maker = sdk?.[MAKERS[kind]] as { create?: (opts: Record<string, unknown>) => unknown } | undefined
-  if (!maker || typeof maker.create !== 'function') return null
-
-  const raw = (await Promise.resolve(
-    maker.create({
-      container: options.container,
-      binary: options.binary,
-      fileName: options.fileName,
-      readOnly: options.readOnly,
-      // 兼容部分内核直接吃 Uint8Array 的写法
-      data: new Uint8Array(options.binary),
-    }),
-  )) as Record<string, unknown> | null
-
-  if (!raw) throw new Error('内核 create() 未返回实例')
-
-  const destroy = raw.destroy ?? raw.dispose
-  const save = raw.save ?? raw.export ?? raw.exportAsync ?? raw.toBlob
-  const setReadOnly = raw.setReadOnly ?? raw.setReadonly ?? raw.setEditable
-
-  if (typeof destroy !== 'function' || typeof save !== 'function') {
-    throw new Error('内核实例缺少 destroy / save 方法，请按官方 release 核对 API 后修改 artcraft/loader.ts')
-  }
-
-  return {
-    destroy: () => void (destroy as () => void).call(raw),
-    save: async () => {
-      const out = await Promise.resolve((save as () => unknown).call(raw))
-      if (out instanceof Blob) return out
-      if (out instanceof ArrayBuffer) return new Blob([out])
-      throw new Error('内核 save() 返回值不是 Blob / ArrayBuffer')
-    },
-    setReadOnly: (value: boolean) => {
-      if (typeof setReadOnly === 'function') {
-        void (setReadOnly as (v: boolean) => void).call(raw, value)
+/** 解析内核发来的消息；非该内核的消息返回 null */
+export function parseKernelMessage(kernel: string, data: unknown): KernelEvent | null {
+  if (!data || typeof data !== 'object') return null
+  const msg = data as Record<string, unknown>
+  const type = typeof msg.type === 'string' ? msg.type : ''
+  switch (type) {
+    case `${kernel}:ready`:
+      return { type: 'ready' }
+    case `${kernel}:failed`:
+      return { type: 'failed', message: typeof msg.error === 'string' ? msg.error : '内核启动失败' }
+    case `${kernel}:dirty`:
+      return { type: 'dirty', value: msg.dirty === true }
+    case `${kernel}:save`: {
+      const bytes = toBytes(msg.bytes)
+      if (!bytes) return null
+      return {
+        type: 'save',
+        payload: {
+          name: typeof msg.name === 'string' && msg.name.trim() ? msg.name : 'document',
+          saveAs: msg.saveAs === true,
+          bytes,
+        },
       }
-    },
+    }
+    default:
+      return null
   }
+}
+
+/** 宿主 → 内核的 open 消息体（bytes 走结构化克隆，不 transfer，避免源缓冲被 detach） */
+export function openMessage(name: string, bytes: ArrayBuffer): { type: string; name: string; bytes: ArrayBuffer } {
+  return { type: 'wordcraft:open', name, bytes }
+}
+
+/** bytes 字段：ArrayBuffer 或 Uint8Array */
+function toBytes(value: unknown): ArrayBuffer | null {
+  if (value instanceof ArrayBuffer) return value
+  if (value instanceof Uint8Array) {
+    return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer
+  }
+  return null
 }
