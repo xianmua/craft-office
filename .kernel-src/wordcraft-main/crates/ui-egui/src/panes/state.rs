@@ -56,6 +56,13 @@ pub fn open(app: &WordApp) -> Vec<Pane> {
     .collect::<Vec<_>>();
     let order = order(app);
     open.sort_by_key(|pane| order.iter().position(|p| p == pane).unwrap_or(usize::MAX));
+    // 插件面板：per-window 开着且注册表仍在的都算开着，排在静态面板之后。
+    for (h, _) in &app.plugin_panes.open {
+        let pane = Pane::Plugin(*h);
+        if app.plugins.panel(*h).is_some() && !open.contains(&pane) {
+            open.push(pane);
+        }
+    }
     open
 }
 
@@ -97,7 +104,7 @@ pub(crate) fn lenient_places<'de, D: serde::Deserializer<'de>>(d: D) -> Result<B
         .iter()
         .filter(|pane| **pane != Pane::Styles)
         .filter_map(|pane| {
-            let saved = map.get(pane.key())?;
+            let saved = map.get(pane.key().as_ref())?;
             let place = SavedPane { dock: saved.get("dock").and_then(dock), float: saved.get("float").and_then(float_rect), width: None };
             Some((pane.key().to_string(), place))
         })
@@ -143,8 +150,12 @@ fn stored_state(app: &WordApp, pane: Pane) -> (PaneState, bool) {
     if pane == Pane::Styles {
         return (styles_state(app), true);
     }
-    let default = pane.default_state();
-    let Some(saved) = app.ui.pane_places.get(pane.key()) else {
+    // 插件面板的默认宽度来自注册表声明。
+    let default = match pane {
+        Pane::Plugin(h) => PaneState::docked(Edge::End, app.plugins.panel(h).and_then(|s| s.default_width).unwrap_or(300.0).clamp(200.0, 520.0)),
+        _ => pane.default_state(),
+    };
+    let Some(saved) = app.ui.pane_places.get(pane.key().as_ref()) else {
         return (default, false);
     };
     let (place, explicit) = match saved.dock {

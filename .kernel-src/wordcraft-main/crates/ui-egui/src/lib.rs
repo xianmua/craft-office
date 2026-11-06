@@ -59,6 +59,7 @@ pub mod objects;
 pub mod options;
 pub mod panes;
 pub mod paste_picture;
+pub mod plugins;
 pub mod previews;
 pub mod print_page;
 pub mod printing;
@@ -481,6 +482,12 @@ pub struct WordApp {
     pub restrict: dialogs_review::RestrictPane,
     /// The language-aware spelling and grammar task pane.
     pub spelling_review: Option<proofing_pane::SpellingForm>,
+    /// Web: 插件事件队列（宿主注入；桌面为 None，见 `Services::plugin_load`）。
+    pub plugin_events: Option<plugins::PluginEvents>,
+    /// 插件注册表：装载后的插件、命令与面板句柄（app 级）。
+    pub plugins: plugins::Registry,
+    /// 当前窗口开着的插件面板（per window，见 `window_ui`）。
+    pub plugin_panes: plugins::Panes,
     pub status_msg: Option<(String, f64)>,
     pub previews: previews::Previews,
     /// Media key of the picture a pending Change Picture replaces (#147).

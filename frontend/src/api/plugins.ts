@@ -1,6 +1,6 @@
 export interface PluginCatalog {
   market: Array<{ id: string; name: string; version: string; description: string; file: string }>
-  installed: string[]
+  installed: Array<{ id: string; enabled: boolean }>
 }
 
 async function readError(res: Response): Promise<string> {
@@ -19,21 +19,25 @@ export async function fetchPlugins(): Promise<PluginCatalog> {
   return (await res.json()) as PluginCatalog
 }
 
-async function post(op: 'install' | 'uninstall', id: string): Promise<void> {
+async function post(op: 'install' | 'uninstall' | 'enable', body: Record<string, unknown>): Promise<void> {
   const res = await fetch(`/api/plugins/${op}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(await readError(res))
 }
 
 export function installPlugin(id: string): Promise<void> {
-  return post('install', id)
+  return post('install', { id })
 }
 
 export function uninstallPlugin(id: string): Promise<void> {
-  return post('uninstall', id)
+  return post('uninstall', { id })
+}
+
+export function enablePlugin(id: string, enabled: boolean): Promise<void> {
+  return post('enable', { id, enabled })
 }
 
 export async function fetchPluginFile(id: string): Promise<string> {

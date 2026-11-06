@@ -99,7 +99,7 @@ const UNSAVED: &str = "the document has unsaved changes: save it first, or pass 
 const NO_DOCUMENT: &str = "no document is open; create one (file.new) or open one (file.open) first";
 
 /// The methods that take `doc`.
-const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "ui.render"];
+const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "document.text", "ui.render"];
 
 /// The open document other than the active one that a request's `doc` names; `None` for the
 /// active document (no `doc`, null, or the active document's id). An id that names no open
@@ -213,11 +213,20 @@ pub fn handle(app: &mut WordApp, ctx: &egui::Context, req: &ControlRequest) -> O
             ok(Value::Array(commands))
         }
         // The Start screen's empty window has no document to inspect or render (#1129).
-        "document.inspect" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
+        "document.inspect" | "document.text" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
         "document.inspect" => match app.session.run("document.inspect", p) {
             Ok(v) => ok(v),
             Err(e) => err(e),
         },
+        // 插件 ctx.doc 的文本源：有选区给选区（selection 为 true），否则给全文。
+        "document.text" => {
+            let selection = app.session.selected_text();
+            if selection.trim().is_empty() {
+                ok(json!({"selection": false, "text": app.session.doc.plain_text(wordcraft_doc::StoryRef::Body)}))
+            } else {
+                ok(json!({"selection": true, "text": selection}))
+            }
+        }
         "ui.inspect" => ok(inspect(app, ctx)),
         "ui.parity" => ok(wordcraft_engine::catalog::parity(&app.session.registry)),
         "ui.click" => {

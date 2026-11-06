@@ -1,0 +1,7 @@
+{
+  "id": "ai-summary",
+  "name": "AI 文档总结",
+  "version": "0.2.0",
+  "description": "调用 DeepSeek 对当前文档内容生成摘要，适合长文档快速了解要点。",
+  "file": "main.js"
+}

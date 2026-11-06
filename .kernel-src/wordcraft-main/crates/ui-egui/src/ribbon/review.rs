@@ -175,8 +175,23 @@ pub(super) fn help(app: &mut WordApp, ui: &mut Ui) {
     group(ui, "Help", None, app, |ui, app| {
         big(ui, app, "help", "Help", "ui.dialog", json!({"name": "about"}), false);
     });
-    // Framed by a page that keeps the files: it owns the plugins, so hand the request over.
-    if app.services.host_plugins.is_some() {
+    // 插件：内核插件运行时（宿主注入 plugin_events）时给「插件管理」+ 各插件命令；
+    // 否则按旧约定把请求交给页面（hostPlugins）。
+    if app.plugin_events.is_some() {
+        // 先快照命令列表，闭包里只读。
+        let mut commands: Vec<(String, String, String)> = Vec::new();
+        for plugin in app.plugins.plugins.iter().filter(|p| p.enabled) {
+            for command in &plugin.commands {
+                commands.push((plugin.id.clone(), command.id.clone(), command.title.clone()));
+            }
+        }
+        group(ui, "Plugins", None, app, |ui, app| {
+            big(ui, app, "options", "插件管理", "ui.plugins", json!({}), false);
+            for (plugin, id, title) in &commands {
+                big(ui, app, "options", title, "ui.plugin.run", json!({"id": id, "plugin": plugin}), false);
+            }
+        });
+    } else if app.services.host_plugins.is_some() {
         group(ui, "Plugins", None, app, |ui, app| {
             big(ui, app, "options", "Plugins", "ui.hostPlugins", json!({}), false);
         });

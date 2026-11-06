@@ -4,6 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GridCraft</title>
+  <script>
+    // 默认界面语言：简体中文（craft-i18n 内置 zh-hans）。用户在选项里手选过语言则尊重其选择。
+    try {
+      var KEY = 'gridcraft.ui';
+      var prefs = {};
+      try { prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { prefs = {}; }
+      if (!prefs.language || prefs.language === 'auto') {
+        prefs.language = 'zh-hans';
+        localStorage.setItem(KEY, JSON.stringify(prefs));
+      }
+    } catch (e) { /* localStorage 不可用时保持 auto */ }
+  </script>
   <link data-trunk rel="icon" href="../../assets/app-icon/gridcraft.ico" />
   <link data-trunk rel="rust" data-bin="gridcraft-web" data-wasm-opt="z" data-weak-refs />
   <style>

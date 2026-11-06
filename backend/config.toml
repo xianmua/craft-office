@@ -2,9 +2,9 @@
 # 说明：本文件是「默认即安全」的配置，未列入 allow_hosts 的域名一律拒绝代理。
 
 [server]
-bind = "0.0.0.0:8080"
+bind = "0.0.0.0:8090"
 # 对外访问地址，用于日志与文档中的示例链接
-public_base_url = "http://127.0.0.1:8080"
+public_base_url = "http://127.0.0.1:8090"
 # 前端构建产物目录（frontend 的 vite build 输出到这里）
 static_dir = "./static"
 
@@ -16,17 +16,28 @@ max_bytes = 52428800
 #  - 代理流式转发：连接超时固定 10s + 此值为「读空闲超时」（两次读之间无数据才中断）
 # 之所以不用总时限，是因为慢速上游传大文件会被误杀（实测 1.3MB/50KB·s⁻¹ 会超 30s）。
 timeout_secs = 30
-# 生产只允许 https
-allow_scheme = ["https"]
-# 只允许 443，避免把代理当成任意端口扫描器
-allow_ports = [443]
+# 生产只允许 https；本机联调临时放开 http（提交前如需恢复改为 ["https"]）
+allow_scheme = ["https", "http"]
+# 只允许 443，避免把代理当成任意端口扫描器；8090 为本机联调端口
+allow_ports = [443, 8090]
 
 # 允许代理的域名白名单，paths 支持结尾 * 前缀匹配
 [[doc.allow_hosts]]
 host = "cdn.example.com"
 paths = ["/docs/*"]
 
+# 本机联调：本机静态示例文档
+[[doc.allow_hosts]]
+host = "127.0.0.1"
+paths = ["/*"]
+
 # 演示用：Calibre 官方示例 docx，可删
 [[doc.allow_hosts]]
 host = "calibre-ebook.com"
 paths = ["/downloads/demos/*"]
+
+# 插件目录：dev_dir 项目级（只读、进 git，调试热生效）；data_dir 用户级（安装落点，可写）
+# 相对路径基于后端工作目录（backend/）；支持 ~ 前缀
+[plugins]
+dev_dir = "../plugins"
+data_dir = "~/.craft-office/plugins"

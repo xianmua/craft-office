@@ -1,0 +1,7 @@
+{
+  "id": "doc-stats",
+  "name": "字数统计",
+  "version": "0.2.0",
+  "description": "统计当前文档的字符数、词数与段落数，本地计算，不联网。",
+  "file": "main.js"
+}

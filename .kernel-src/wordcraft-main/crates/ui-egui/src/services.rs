@@ -45,6 +45,13 @@ pub struct Services {
     /// Web, framed by a page: the user asked for the page's plugin manager (the Help › Plugins
     /// button, shown only when this is set). The page decides what to open.
     pub host_plugins: Option<Box<dyn Fn()>>,
+    /// Web: 装载（或重载）全部插件；注册结果经 `WordApp::plugin_events` 队列逐帧送回内核。
+    /// 注入后帮助菜单出现「插件管理」。
+    pub plugin_load: Option<Box<dyn Fn()>>,
+    /// Web: 启停一个插件（宿主写 installed.json 并重载）；确认经 `PluginEvent::Enabled` 回填。
+    pub plugin_set_enabled: Option<Box<dyn Fn(&str, bool)>>,
+    /// 内核 → 插件：命令执行、面板事件（channel, payload JSON），宿主分发给对应插件。
+    pub plugin_invoke: Option<Box<dyn Fn(&str, serde_json::Value)>>,
     /// Web: told whether the document has unsaved changes after each pass, for the browser's
     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
     pub on_dirty: Option<Box<dyn Fn(bool)>>,

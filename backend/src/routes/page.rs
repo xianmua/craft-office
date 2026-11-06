@@ -31,10 +31,185 @@ pub async fn office_root(cfg: web::Data<Arc<AppConfig>>) -> ActixResult<HttpResp
     Ok(html_response(index_html(cfg.as_ref()).await?))
 }
 
+#[derive(serde::Deserialize)]
+struct OfficeQuery {
+    url: Option<String>,
+}
+
+/// /office 入口：带 ?url= 时按扩展名分发到对应产品页（/wordcraft 等），
+/// 产品未就位（wasm 产物缺失）则留在 /office 走通用流程；不带 url 就是前端入口页。
 #[get("/office")]
-pub async fn office_page(cfg: web::Data<Arc<AppConfig>>) -> ActixResult<HttpResponse> {
+pub async fn office_page(
+    req: HttpRequest,
+    cfg: web::Data<Arc<AppConfig>>,
+) -> ActixResult<HttpResponse> {
+    let url = web::Query::<OfficeQuery>::from_query(req.query_string())
+        .ok()
+        .and_then(|q| q.url.clone())
+        .map(|u| u.trim().to_string())
+        .filter(|u| !u.is_empty());
+
+    if let Some(url) = url {
+        let cfg_ref: &Arc<AppConfig> = &cfg;
+        if let Some(route) = kernel_route_of(cfg_ref, &url) {
+            // 手动拼接：form_urlencoded 的 Serializer 对带路径前缀的串补的是 &，不是 ?
+            let encoded: String = url::form_urlencoded::byte_serialize(url.as_bytes()).collect();
+            let target = format!("/{route}?url={encoded}");
+            return Ok(HttpResponse::Found()
+                .insert_header(("Location", target))
+                .finish());
+        }
+    }
+
     let cfg: &Arc<AppConfig> = &cfg;
     Ok(html_response(index_html(cfg.as_ref()).await?))
+}
+
+/// 按扩展名选产品；返回 None 表示留在 /office。
+fn kernel_route_of(cfg: &AppConfig, raw_url: &str) -> Option<&'static str> {
+    let ext = crate::routes::doc::detect_ext(raw_url);
+    let (route, static_name): (&str, &str) = match ext.as_str() {
+        "docx" | "doc" | "odt" | "rtf" | "md" | "tex" | "txt" | "html" => ("wordcraft", "wordcraft"),
+        "xlsx" | "xls" | "xlsb" | "csv" | "ods" => ("gridcraft", "gridcraft"),
+        "pptx" | "ppt" => ("deckcraft", "deckcraft"),
+        _ => return None,
+    };
+    // 产品页就位 = 静态目录里有对应内核产物
+    if Path::new(&cfg.server.static_dir).join(static_name).join("index.html").exists() {
+        Some(route)
+    } else {
+        None
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ProductQuery {
+    url: Option<String>,
+}
+
+/// 产品页：/wordcraft?url=xxx.docx 直接以全屏内核打开远程文档。
+/// 动态输出一层极薄宿主页（全屏 iframe 加载内核 + /api/doc/proxy 桥），内核零改动。
+/// gridcraft 等后续内核接入时复用（同一桥协议，仅前缀不同）。
+#[get("/wordcraft")]
+pub async fn wordcraft_page(
+    req: HttpRequest,
+    cfg: web::Data<Arc<AppConfig>>,
+) -> ActixResult<HttpResponse> {
+    let q = web::Query::<ProductQuery>::from_query(req.query_string())
+        .map_err(|e| actix_web::error::ErrorBadRequest(format!("参数解析失败：{e}")))?;
+    match q.url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+        Some(url) => Ok(html_response(product_host_html("wordcraft", url))),
+        // 无 url：回退静态内核页（独立完整编辑器）
+        None => {
+            let cfg: &Arc<AppConfig> = &cfg;
+            Ok(html_response(index_html(cfg.as_ref()).await?))
+        }
+    }
+}
+
+/// gridcraft 产品页：与 wordcraft 同一桥协议，仅前缀不同。
+#[get("/gridcraft")]
+pub async fn gridcraft_page(
+    req: HttpRequest,
+    cfg: web::Data<Arc<AppConfig>>,
+) -> ActixResult<HttpResponse> {
+    let q = web::Query::<ProductQuery>::from_query(req.query_string())
+        .map_err(|e| actix_web::error::ErrorBadRequest(format!("参数解析失败：{e}")))?;
+    match q.url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+        Some(url) => Ok(html_response(product_host_html("gridcraft", url))),
+        None => {
+            let cfg: &Arc<AppConfig> = &cfg;
+            Ok(html_response(index_html(cfg.as_ref()).await?))
+        }
+    }
+}
+
+/// 产品宿主页模板。KERNEL 前缀决定 iframe 路径与桥消息类型。
+fn product_host_html(kernel: &str, url: &str) -> String {
+    let kernel_json = serde_json::to_string(kernel).unwrap_or_else(|_| "\"wordcraft\"".into());
+    let url_json = serde_json::to_string(url).unwrap_or_else(|_| "\"\"".into());
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+html,body{{margin:0;height:100%;background:#1a1a1a;font-family:system-ui,sans-serif}}
+#stage{{width:100vw;height:100vh}}
+iframe{{border:0;width:100%;height:100%;display:block}}
+#status{{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa0a6;font-size:14px}}
+.spin{{width:28px;height:28px;border:3px solid #3a3a3a;border-top-color:#7aa2ff;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:12px}}
+@keyframes spin{{to{{transform:rotate(360deg)}}}}</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="status"><div style="display:flex;flex-direction:column;align-items:center"><div class="spin"></div><div>正在通过后端代理拉取文档…</div></div></div>
+<script>
+(function() {{
+"use strict";
+var KERNEL = {kernel};
+var DOC_URL = {url};
+var stage = document.getElementById('stage');
+var status = document.getElementById('status');
+var iframe = document.createElement('iframe');
+iframe.src = '/' + KERNEL + '/?host=parent';
+stage.appendChild(iframe);
+
+function hideStatus() {{ status.style.display = 'none'; }}
+function showErr(m) {{ status.innerHTML = '<div style="max-width:30em;line-height:1.9;color:#e06c75">' + m + '</div>'; }}
+function nameOf(u) {{ try {{ var n = decodeURIComponent(u.split('/').pop().split('?')[0]); return n || 'document'; }} catch (e) {{ return 'document'; }} }}
+function openInKernel(buf, name) {{ iframe.contentWindow.postMessage({{ type: KERNEL + ':open', name: name, bytes: buf }}, '*'); }}
+
+var pending = null, ready = false;
+window.addEventListener('message', function(ev) {{
+  var d = ev.data || {{}};
+  if (d.type === KERNEL + ':ready') {{
+    ready = true;
+    if (pending) {{ openInKernel(pending.bytes, pending.name); pending = null; hideStatus(); }}
+  }} else if (d.type === KERNEL + ':save') {{
+    if (d.bytes) {{
+      var blob = new Blob([d.bytes], {{ type: 'application/octet-stream' }});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (d.name && String(d.name).trim()) || nameOf(DOC_URL);
+      a.click();
+    }}
+  }} else if (d.type === KERNEL + ':failed') {{
+    showErr('内核加载失败：' + (d.error || '未知错误'));
+  }}
+}});
+
+fetch('/api/doc/proxy?url=' + encodeURIComponent(DOC_URL))
+  .then(function(r) {{ if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }})
+  .then(function(buf) {{
+    var name = nameOf(DOC_URL);
+    if (ready) {{ openInKernel(buf, name); hideStatus(); }}
+    else {{ pending = {{ name: name, bytes: buf }}; }}
+  }})
+  .catch(function(e) {{ showErr('文档拉取失败：' + e.message + '<br>请检查链接是否可访问，或在 /office 页面重试。'); }});
+}})();
+</script>
+</body>
+</html>
+"#,
+        title = html_escape(kernel),
+        kernel = kernel_json,
+        url = url_json,
+    )
+}
+
+fn html_escape(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '<' => "&lt;".to_string(),
+            '>' => "&gt;".to_string(),
+            '&' => "&amp;".to_string(),
+            '"' => "&quot;".to_string(),
+            c => c.to_string(),
+        })
+        .collect()
 }
 
 /// 健康检查：顺便告诉前端 / 运维内核产物是否就位。

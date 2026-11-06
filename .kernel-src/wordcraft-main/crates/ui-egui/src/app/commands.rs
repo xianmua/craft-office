@@ -530,6 +530,56 @@ impl WordApp {
                 }
                 Value::Null
             }
+            "ui.plugins" => {
+                // 内核插件管理器：仅当宿主注入了插件运行时（web 版）时可用。
+                if self.plugin_events.is_some() {
+                    self.plugins.manager_open = true;
+                } else {
+                    self.status("插件功能仅在接入插件宿主的浏览器版可用.");
+                }
+                Value::Null
+            }
+            "ui.plugin.enable" => {
+                // 启停插件：宿主写 installed.json 并重载，确认经 PluginEvent::Enabled 回填。
+                let id = s("id").unwrap_or_default().to_string();
+                let enabled = p.get("enabled").and_then(Value::as_bool).unwrap_or(true);
+                if let Some(set) = self.services.plugin_set_enabled.as_ref() {
+                    set(&id, enabled);
+                }
+                Value::Null
+            }
+            "ui.plugin.reload" => {
+                if let Some(load) = self.services.plugin_load.as_ref() {
+                    load();
+                }
+                Value::Null
+            }
+            "ui.plugin.run" => {
+                // 执行插件命令：交给宿主分发到插件。
+                let id = s("id").unwrap_or_default().to_string();
+                if let Some(invoke) = self.services.plugin_invoke.as_ref() {
+                    invoke("command.run", json!({"id": id}));
+                }
+                Value::Null
+            }
+            "ui.plugin.openPane" => {
+                // 按面板 id 打开插件面板（注册表查句柄）。
+                let id = s("panel").unwrap_or_default();
+                match self.plugins.panel_handle(id) {
+                    Some(h) => self.plugin_panes.open(h),
+                    None => self.status(format!("没有叫 {id} 的插件面板.")),
+                }
+                Value::Null
+            }
+            "ui.plugin.panelSend" => {
+                // 面板输入框发送：交给宿主分发到插件。
+                let panel = s("panel").unwrap_or_default().to_string();
+                let text = s("text").unwrap_or_default().to_string();
+                if let Some(invoke) = self.services.plugin_invoke.as_ref() {
+                    invoke("panel.send", json!({"panel": panel, "text": text}));
+                }
+                Value::Null
+            }
             "ui.dialog" if s("name") == Some("colors") => {
                 // The font colour's More Colors… (#606); `tab`: standard or custom.
                 let target = colors::Target::cmd("format.color").remember(colors::Remember::FontColor);

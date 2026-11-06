@@ -16,6 +16,9 @@ vendor/artcraft/*.js
 # 验证报告生成物
 scripts/verify-results.json
 
+# 运行时数据（文档缓存等）
+backend/data/
+
 # 环境变量
 .env
 .env.local

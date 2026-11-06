@@ -47,10 +47,11 @@ use state::pane_state;
 pub use state::{SavedDock, SavedPane, open};
 pub(crate) use state::{lenient_order, lenient_places};
 
-/// The task panes, in their default order: each edge's first pane is outermost.
+/// The task panes, in their default order: each edge's first pane is outermost. `Plugin` is a
+/// plugin-declared panel; its payload is the registry handle (monotonic, never reused — a reload
+/// invalidates old panels on purpose).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Pane {
-    /// SmartArt Design › Text Pane, while a SmartArt graphic WordCraft can edit is selected.
     SmartArtText,
     Navigation,
     Clipboard,
@@ -62,6 +63,8 @@ pub enum Pane {
     RestrictEditing,
     Proofing,
     Comments,
+    /// 插件声明的动态面板：载荷是注册表面板句柄。
+    Plugin(u16),
 }
 
 impl Pane {
@@ -78,6 +81,8 @@ impl Pane {
             Self::RestrictEditing => "Restrict Editing",
             Self::Proofing => "Proofing",
             Self::Comments => "Comments",
+            // 实际标题由 `PaneContent::title` 查注册表；此处仅为穷举兜底。
+            Self::Plugin(_) => "插件面板",
         }
     }
 
@@ -94,24 +99,27 @@ impl Pane {
             Self::RestrictEditing => (Edge::End, 270.0),
             Self::Proofing => (Edge::End, 400.0),
             Self::Comments => (Edge::End, 290.0),
+            // 插件面板实际宽度在 `PaneContent::default_state` 查注册表。
+            Self::Plugin(_) => (Edge::End, 300.0),
         };
         PaneState::docked(edge, width)
     }
 
-    /// The pane's key in `ui.json`'s `panePlaces`.
-    pub fn key(self) -> &'static str {
+    /// The pane's key in `ui.json`'s `panePlaces`. Plugin panels carry their handle.
+    pub fn key(self) -> std::borrow::Cow<'static, str> {
         match self {
-            Self::SmartArtText => "smartArtText",
-            Self::Navigation => "navigation",
-            Self::Clipboard => "clipboard",
-            Self::Styles => "styles",
-            Self::StyleInspector => "styleInspector",
-            Self::Accessibility => "accessibility",
-            Self::AltText => "altText",
-            Self::FormatShape => "formatShape",
-            Self::RestrictEditing => "restrictEditing",
-            Self::Proofing => "proofing",
-            Self::Comments => "comments",
+            Self::SmartArtText => "smartArtText".into(),
+            Self::Navigation => "navigation".into(),
+            Self::Clipboard => "clipboard".into(),
+            Self::Styles => "styles".into(),
+            Self::StyleInspector => "styleInspector".into(),
+            Self::Accessibility => "accessibility".into(),
+            Self::AltText => "altText".into(),
+            Self::FormatShape => "formatShape".into(),
+            Self::RestrictEditing => "restrictEditing".into(),
+            Self::Proofing => "proofing".into(),
+            Self::Comments => "comments".into(),
+            Self::Plugin(h) => format!("plugin:{h}").into(),
         }
     }
 
@@ -145,6 +153,7 @@ impl Pane {
             Self::AltText => Some("view.altTextPane"),
             Self::FormatShape => Some("view.formatShapePane"),
             Self::Comments => Some("view.commentsPane"),
+            Self::Plugin(_) => None,
             Self::RestrictEditing | Self::Proofing => None,
         }
     }
@@ -152,7 +161,11 @@ impl Pane {
 
 impl PaneContent<Pane> for Content<'_> {
     fn title(&self, pane: &Pane) -> String {
-        tl!(pane.title()).into()
+        match pane {
+            // 插件面板标题查注册表；句柄失效（刚重载）时用兜底名。
+            Pane::Plugin(h) => self.app.plugins.panel(*h).map(|s| s.title.clone()).unwrap_or_else(|| "插件面板".into()),
+            _ => tl!(pane.title()).into(),
+        }
     }
 
     fn body(&mut self, ui: &mut Ui, pane: &Pane) {
@@ -171,11 +184,19 @@ impl PaneContent<Pane> for Content<'_> {
             Pane::RestrictEditing => crate::dialogs_review::restrict_pane(app, ui),
             Pane::Proofing => crate::proofing_pane::show(app, ui),
             Pane::Comments => comments(app, ui),
+            Pane::Plugin(h) => crate::plugins::panel_ui(app, ui, *h),
         })
     }
 
     fn default_state(&self, pane: &Pane) -> PaneState {
-        pane.default_state()
+        match pane {
+            // 插件面板：注册表声明的默认宽度，夹到停靠范围。
+            Pane::Plugin(h) => {
+                let width = self.app.plugins.panel(*h).and_then(|s| s.default_width).unwrap_or(300.0).clamp(200.0, 520.0);
+                PaneState::docked(Edge::End, width)
+            }
+            _ => pane.default_state(),
+        }
     }
 }
 

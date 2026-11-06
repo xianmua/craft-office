@@ -30,10 +30,13 @@ let kernelReady = false
 const pending: Array<{ name: string; bytes: ArrayBuffer }> = []
 
 function onMessage(event: MessageEvent) {
+  console.log('[kf] message', event.origin, typeof event.data, JSON.stringify(event.data))
   if (event.origin !== location.origin) return
-  // 只听本 iframe 发来的消息
-  if (event.source && frame.value?.contentWindow && event.source !== frame.value.contentWindow) return
+  // 不做 event.source 与 iframe.contentWindow 的严格比对：内核加载期间 iframe 可能被
+  // Vue 重建，旧内核窗口的迟发消息（如 wordcraft:plugins）会被误丢，导致市场打不开；
+  // 同源 + 消息类型前缀（parseKernelMessage 按 `${kernel}:` 匹配）已足够过滤。
   const parsed = parseKernelMessage(props.kernel, event.data)
+  console.log('[kf] parsed kernel=', JSON.stringify(props.kernel), '->', JSON.stringify(parsed))
   if (!parsed) return
   switch (parsed.type) {
     case 'ready':
@@ -72,8 +75,13 @@ function openDoc(name: string, bytes: ArrayBuffer) {
   frame.value.contentWindow.postMessage(openMessage(name, bytes), location.origin)
 }
 
+/** 插件启停/安装/卸载后通知内核重载插件（web/plugins.rs 监听） */
+function notifyPluginsChanged() {
+  frame.value?.contentWindow?.postMessage('wordcraft:pluginsChanged', location.origin)
+}
+
 onMounted(() => window.addEventListener('message', onMessage))
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 
-defineExpose({ openDoc })
+defineExpose({ openDoc, notifyPluginsChanged })
 </script>

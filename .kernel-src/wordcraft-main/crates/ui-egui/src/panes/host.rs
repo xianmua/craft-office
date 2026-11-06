@@ -86,6 +86,16 @@ pub(crate) fn apply(app: &mut WordApp, request: PaneRequest<Pane>) {
         }
         PaneRequest::Resize(Pane::Styles, width) => app.ui.styles_pane_width = Some(width),
         PaneRequest::FloatRect(Pane::Styles, rect) => app.ui.styles_pane_float = Some(rect),
+        PaneRequest::Place(pane @ Pane::Plugin(_), place) => {
+            // 插件面板不走 ui.paneDock 命令（from_key 只认静态面板），直接记 panePlaces。
+            let dock = match place {
+                Place::Docked(Edge::Start) => SavedDock::Left,
+                Place::Docked(Edge::End) => SavedDock::Right,
+                Place::Floating => SavedDock::Float,
+                Place::Docked(Edge::Bottom) => return,
+            };
+            app.ui.pane_places.entry(pane.key().into()).or_default().dock = Some(dock);
+        }
         PaneRequest::Place(pane, place) => {
             let dock = match place {
                 Place::Docked(Edge::Start) => "left",
@@ -154,6 +164,7 @@ fn close(app: &mut WordApp, pane: Pane) {
         Some(id) => {
             let _ = app.run(id, json!({"value": false}));
         }
+        None if let Pane::Plugin(h) = pane => app.plugin_panes.close(h),
         None if pane == Pane::Proofing => app.spelling_review = None,
         None => app.restrict.open = false,
     }

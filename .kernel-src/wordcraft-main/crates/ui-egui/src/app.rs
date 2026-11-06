@@ -39,6 +39,7 @@ impl WordApp {
             colors,
             restrict,
             spelling_review,
+            plugin_panes,
             status_msg,
             previews,
             change_picture_target,
@@ -154,6 +155,7 @@ impl WordApp {
             colors,
             restrict,
             spelling_review,
+            plugin_panes,
             status_msg,
             previews,
             change_picture_target,
@@ -184,12 +186,48 @@ impl WordApp {
             shown_document,
             #[cfg(not(target_arch = "wasm32"))]
             file_browser,
+            // Web 宿主注入；桌面保持 None。
+            plugin_events: None,
+            plugins: Default::default(),
         }
     }
 
     pub fn with_control(mut self, rx: std::sync::mpsc::Receiver<ControlRequest>) -> Self {
         self.control_rx = Some(rx);
         self
+    }
+
+    /// 排空插件事件队列（宿主经 `Services::plugin_*` 钩子 push）：注册表与面板状态逐帧应用。
+    fn drain_plugins(&mut self, ctx: &egui::Context) {
+        let Some(queue) = self.plugin_events.as_ref() else { return };
+        let events = std::mem::take(&mut *queue.lock().unwrap_or_else(|e| e.into_inner()));
+        if events.is_empty() {
+            return;
+        }
+        for event in events {
+            match event {
+                crate::plugins::PluginEvent::Ready => {
+                    // 重载换句柄：旧面板全部关闭（预期行为，方案已声明）。
+                    self.plugins.clear();
+                    self.plugin_panes = crate::plugins::Panes::default();
+                }
+                crate::plugins::PluginEvent::Commands { plugin, commands } => self.plugins.set_commands(&plugin, commands),
+                crate::plugins::PluginEvent::Panels { plugin, panels } => self.plugins.add_panels(&plugin, panels),
+                crate::plugins::PluginEvent::PanelState { panel, state } => {
+                    if let Some(h) = self.plugins.panel_handle(&panel)
+                        && self.plugin_panes.get(h).is_some()
+                    {
+                        self.plugin_panes.apply_state(h, &state);
+                    }
+                    ctx.request_repaint();
+                }
+                crate::plugins::PluginEvent::Enabled { id, enabled } => self.plugins.set_enabled(&id, enabled),
+                crate::plugins::PluginEvent::Toast { message } => self.status(message),
+                crate::plugins::PluginEvent::Dialog { title, text } => self.plugins.dialogs.push((title, text)),
+                crate::plugins::PluginEvent::Error { message, .. } => self.status(message),
+            }
+        }
+        ctx.request_repaint();
     }
 
     /// Start-up with no document to open (#766): show File › Home (Blank document, the templates
@@ -320,6 +358,7 @@ impl WordApp {
             self.poll_printing(ctx);
         }
         self.drain_control(ctx);
+        self.drain_plugins(ctx);
         // The active window's own work; with native windows each window does it again as it
         // draws, for itself.
         self.window_work(ctx);

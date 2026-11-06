@@ -14,6 +14,7 @@ const DOC_EXTS: &[&str] =
 const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp", "wmf", "emf"];
 const RECIPIENT_EXTS: &[&str] = wordcraft_engine::cmd::mailings::RECIPIENT_EXTENSIONS;
 mod font_store;
+mod plugins;
 const CANVAS_ID: &str = "wordcraft_canvas";
 const LOADING_ID: &str = "wordcraft_loading";
 
@@ -56,7 +57,10 @@ pub fn start() {
                     // Fonts the user added on an earlier visit (#582); the app notices them arrive.
                     font_store::load_all(cc.egui_ctx.clone());
                     let inbox: Inbox = Inbox::default();
-                    let pasted: Inbox = Inbox::default();
+                    let pasted: Inbox = Default::default();
+                    // 插件运行时：内核注册表事件队列 + 宿主装载（市场已启用的插件 JS）。
+                    let plugin_events: wordcraft_ui_egui::plugins::PluginEvents = Default::default();
+                    let plugin_runtime = plugins::PluginRuntime::start(plugin_events.clone(), cc.egui_ctx.clone());
                     if let Err(e) = listen_for_pasted_pictures(pasted.clone(), cc.egui_ctx.clone()) {
                         log::error!("pasting pictures is unavailable: {e}");
                     }
@@ -69,13 +73,15 @@ pub fn start() {
                     let mut session = Session::new(doc);
                     session.system_region = region;
                     let messages = Rc::new(RefCell::new(Vec::new()));
-                    let mut services = services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone());
+                    let mut services = services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone(), plugin_runtime.clone());
                     if let Some(bridge) = &app_bridge {
                         bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
                     }
                     let mut app = WordApp::new(session, services);
                     // Pasted pictures wait apart from dropped files: the app inserts one only when the page is the edit target (#1349).
                     app.services.pasted = Some(pasted);
+                    // 插件注册事件从队列逐帧应用（同一 Arc）。
+                    app.plugin_events = Some(plugin_events);
                     app.autosave = false;
                     // Preferences from an earlier visit (#2132), as the desktop app reads `ui.json`.
                     let stored = stored_prefs();
@@ -100,7 +106,7 @@ pub fn start() {
                         crate::host::Bridge::set_author(&mut app, &author);
                         prefs.keep_own_author(&app.session.author, &own);
                     }
-                    Ok(Box::new(WebShell { app, inbox, messages, prefs }))
+                    Ok(Box::new(WebShell { app, inbox, messages, prefs, plugins: plugin_runtime }))
                 }),
             )
             .await;
@@ -135,6 +141,7 @@ struct WebShell {
     inbox: Inbox,
     messages: Rc<RefCell<Vec<String>>>,
     prefs: crate::prefs::PrefsSync,
+    plugins: std::rc::Rc<plugins::PluginRuntime>,
 }
 
 fn local_storage() -> Option<web_sys::Storage> {
@@ -155,6 +162,8 @@ impl eframe::App for WebShell {
         for msg in msgs {
             self.app.status(msg);
         }
+        // 插件请求先于内核逻辑分发（命令、面板输入同一帧生效）。
+        self.plugins.pump(&mut self.app, ctx);
         self.app.logic(ctx);
         // Store changed preferences straight away: a reload or closed tab runs no exit code (#2132).
         if let Some(json) = self.prefs.changed(&self.app) {
@@ -249,7 +258,14 @@ fn listen_for_pasted_pictures(inbox: Inbox, ctx: egui::Context) -> Result<(), St
 }
 
 /// `dirty` is the flag the `beforeunload` guard reads ([`guard_unload`]).
-fn services(inbox: Inbox, ctx: egui::Context, dirty: Rc<Cell<bool>>, saves: AsyncSaves, messages: Rc<RefCell<Vec<String>>>) -> Services {
+fn services(
+    inbox: Inbox,
+    ctx: egui::Context,
+    dirty: Rc<Cell<bool>>,
+    saves: AsyncSaves,
+    messages: Rc<RefCell<Vec<String>>>,
+    plugins: Rc<plugins::PluginRuntime>,
+) -> Services {
     let open_inbox = inbox.clone();
     let save_ctx = ctx.clone();
     let font_ctx = ctx.clone();
@@ -291,6 +307,28 @@ fn services(inbox: Inbox, ctx: egui::Context, dirty: Rc<Cell<bool>>, saves: Asyn
         async_saves: Some(saves.clone()),
         download: Some(Box::new(move |path: &str, bytes: &[u8]| download(&saves, &save_ctx, path, bytes))),
         print: Some(Box::new(print_pdf)),
+        // 插件三钩子：装载 / 启停（写完 installed.json 后重载）/ 内核→插件分发。
+        plugin_load: {
+            let plugins = plugins.clone();
+            Some(Box::new(move || plugins.load()))
+        },
+        plugin_set_enabled: {
+            let plugins = plugins.clone();
+            Some(Box::new(move |id: &str, enabled: bool| {
+                let plugins = plugins.clone();
+                let body = serde_json::json!({"id": id, "enabled": enabled}).to_string();
+                wasm_bindgen_futures::spawn_local(async move {
+                    if let Err(e) = plugins::post_json("/api/plugins/enable", &body).await {
+                        log::error!("plugins: 启停失败：{e}");
+                    }
+                    plugins.load();
+                });
+            }))
+        },
+        plugin_invoke: {
+            let plugins = plugins.clone();
+            Some(Box::new(move |channel: &str, params: serde_json::Value| plugins.invoke(channel, params)))
+        },
         inbox: Some(inbox),
         on_dirty: Some(Box::new(move |d| dirty.set(d))),
         animations_enabled: Some(animations_enabled()),

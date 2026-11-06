@@ -9,7 +9,7 @@
     <t-loading :loading="loading" text="加载中…">
       <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
         <p v-if="error" class="text-sm text-red-500 m-0">{{ error }}</p>
-        <p v-else-if="entries.length === 0" class="text-sm text-muted m-0">市场为空（backend/plugins/market.json）。</p>
+        <p v-else-if="entries.length === 0" class="text-sm text-muted m-0">市场为空（plugins/ 下没有插件目录）。</p>
         <div
           v-for="entry in entries"
           :key="entry.id"
@@ -18,10 +18,21 @@
           <div class="flex items-center gap-2">
             <span class="font-medium text-sm">{{ entry.name }}</span>
             <t-tag size="small" variant="light">v{{ entry.version }}</t-tag>
-            <t-tag v-if="isInstalled(entry.id)" size="small" theme="success" variant="light">已安装</t-tag>
             <div class="flex-1" />
+            <label
+              v-if="installedOf(entry.id)"
+              class="flex items-center gap-1 text-sm text-muted cursor-pointer"
+            >
+              启用
+              <t-switch
+                size="small"
+                :value="installedOf(entry.id)!.enabled"
+                :disabled="busyId === entry.id"
+                @change="(v: boolean) => doEnable(entry.id, v)"
+              />
+            </label>
             <t-button
-              v-if="!isInstalled(entry.id)"
+              v-if="!installedOf(entry.id)"
               size="small"
               theme="primary"
               variant="outline"
@@ -32,7 +43,7 @@
             </t-button>
             <t-popconfirm
               v-else
-              :content="`卸载 ${entry.name}？其命令将从悬浮球菜单移除。`"
+              :content="`卸载 ${entry.name}？其命令与面板将从内核移除。`"
               @confirm="doUninstall(entry.id)"
             >
               <t-button size="small" variant="outline" theme="danger" :loading="busyId === entry.id">卸载</t-button>
@@ -48,7 +59,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { fetchPlugins, installPlugin, uninstallPlugin, type PluginCatalog } from '@/api/plugins'
+import { fetchPlugins, installPlugin, uninstallPlugin, enablePlugin, type PluginCatalog } from '@/api/plugins'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'changed'): void }>()
@@ -65,8 +76,8 @@ const catalog = ref<PluginCatalog>({ market: [], installed: [] })
 
 const entries = computed(() => catalog.value.market)
 
-function isInstalled(id: string): boolean {
-  return catalog.value.installed.includes(id)
+function installedOf(id: string): { id: string; enabled: boolean } | undefined {
+  return catalog.value.installed.find((x) => x.id === id)
 }
 
 async function refresh() {
@@ -81,32 +92,33 @@ async function refresh() {
   }
 }
 
-async function doInstall(id: string) {
-  busyId.value = id
+// 变更后通知内核 iframe 重载插件（kernel: wordcraft:pluginsChanged）。
+async function apply(action: () => Promise<void>, okText: string, failText: string) {
   try {
-    await installPlugin(id)
+    await action()
     await refresh()
     emit('changed')
-    MessagePlugin.success('插件已安装')
+    MessagePlugin.success(okText)
   } catch (err) {
-    MessagePlugin.error(err instanceof Error ? err.message : '安装失败')
+    MessagePlugin.error(err instanceof Error ? err.message : failText)
   } finally {
     busyId.value = ''
   }
 }
 
-async function doUninstall(id: string) {
+function doInstall(id: string) {
   busyId.value = id
-  try {
-    await uninstallPlugin(id)
-    await refresh()
-    emit('changed')
-    MessagePlugin.success('插件已卸载')
-  } catch (err) {
-    MessagePlugin.error(err instanceof Error ? err.message : '卸载失败')
-  } finally {
-    busyId.value = ''
-  }
+  void apply(() => installPlugin(id), '插件已安装', '安装失败')
+}
+
+function doUninstall(id: string) {
+  busyId.value = id
+  void apply(() => uninstallPlugin(id), '插件已卸载', '卸载失败')
+}
+
+function doEnable(id: string, enabled: boolean) {
+  busyId.value = id
+  void apply(() => enablePlugin(id, enabled), enabled ? '插件已启用' : '插件已停用', '操作失败')
 }
 
 defineExpose({ refresh })

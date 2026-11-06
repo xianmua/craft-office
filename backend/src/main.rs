@@ -1,4 +1,5 @@
 mod config;
+mod doc_cache;
 mod error;
 mod extract;
 mod guard;
@@ -54,6 +55,16 @@ async fn main() -> std::io::Result<()> {
                     .use_etag(true),
             )
             // ArtCraft 完整编辑器（eframe wasm 产物，trunk build 输出）
+            // 注意：wordcraft_page 必须先注册，/wordcraft?url= 才不会被静态服务截胡
+            .service(routes::page::wordcraft_page)
+            .service(routes::page::gridcraft_page)
+            .service(
+                fs::Files::new("/gridcraft", std::path::Path::new(&static_dir).join("gridcraft"))
+                    .index_file("index.html")
+                    .prefer_utf8(true)
+                    .use_etag(true)
+                    .redirect_to_slash_directory(),
+            )
             .service(
                 fs::Files::new("/wordcraft", std::path::Path::new(&static_dir).join("wordcraft"))
                     .index_file("index.html")
@@ -69,6 +80,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::plugins::list_plugins)
             .service(routes::plugins::install_plugin)
             .service(routes::plugins::uninstall_plugin)
+            .service(routes::plugins::enable_plugin)
             .service(routes::plugins::plugin_file)
             .service(routes::page::health)
             .service(routes::page::artcraft_file)
