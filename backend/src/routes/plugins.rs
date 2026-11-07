@@ -25,6 +25,12 @@ pub struct MarketEntry {
     pub description: String,
     /// 插件入口 JS（相对插件目录）
     pub file: String,
+    /// 插件声明要隐藏的功能区 tab（内核英文原名，如 ["Help"]）；宿主同步进内核 hidden_tabs
+    #[serde(rename = "hideTabs", default)]
+    pub hide_tabs: Vec<String>,
+    /// 插件适用的应用（内核名，如 ["wordcraft","gridcraft"]）；缺省/空 = 全应用可用
+    #[serde(default)]
+    pub apps: Vec<String>,
     /// 来源：project（dev_dir）| user（data_dir）
     #[serde(default)]
     pub source: String,
@@ -33,6 +39,9 @@ pub struct MarketEntry {
 #[derive(Debug, Deserialize)]
 pub struct PluginOp {
     pub id: String,
+    /// 插件目录内的附属文件名（如 agent.md）；缺省取入口 JS。
+    #[serde(default)]
+    pub file: Option<String>,
 }
 
 /// 启停操作：内核插件管理器/市场面板调用。
@@ -245,7 +254,8 @@ fn valid_id(id: &str) -> bool {
     !id.is_empty() && !id.contains('/') && !id.contains('\\') && !id.contains("..")
 }
 
-/// 下发插件 JS（text/javascript），供宿主页面加载执行；项目级优先。
+/// 下发插件文件（JS/manifest/agent.md 等），供宿主页面加载；项目级优先。
+/// file= 限插件目录内的单级文件名（白名单后缀），防目录穿越。
 #[get("/api/plugins/file")]
 pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
     let id = q.id.trim();
@@ -257,11 +267,20 @@ pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>
         .iter()
         .find(|m| m.id == id)
         .ok_or_else(|| ApiError::Internal(format!("市场里没有插件：{id}")))?;
+    let name = q.file.as_deref().map(str::trim).filter(|s| !s.is_empty()).unwrap_or(&entry.file);
+    const ALLOWED: [&str; 4] = ["js", "md", "txt", "json"];
+    let ext_ok = std::path::Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| ALLOWED.contains(&e))
+        .unwrap_or(false);
+    if !ext_ok || name.contains('/') || name.contains('\\') || name.contains("..") {
+        return Err(ApiError::Internal("非法文件名".to_string()));
+    }
     let base = if entry.source == "project" { dev_dir(&cfg) } else { data_dir(&cfg) };
-    let file = base.join(id).join(&entry.file);
+    let file = base.join(id).join(name);
     let code = std::fs::read_to_string(file)
-        .map_err(|e| ApiError::Internal(format!("读取插件 {id} 失败：{e}")))?;
-    Ok(HttpResponse::Ok()
-        .content_type("text/javascript; charset=utf-8")
-        .body(code))
+        .map_err(|e| ApiError::Internal(format!("读取插件 {id}/{name} 失败：{e}")))?;
+    let mime = if name.ends_with(".js") { "text/javascript; charset=utf-8" } else if name.ends_with(".json") { "application/json; charset=utf-8" } else { "text/plain; charset=utf-8" };
+    Ok(HttpResponse::Ok().content_type(mime).body(code))
 }

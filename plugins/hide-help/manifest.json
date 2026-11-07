@@ -1,0 +1,9 @@
+{
+  "id": "hide-help",
+  "name": "隐藏帮助菜单",
+  "version": "1.0.0",
+  "description": "纯声明式插件：隐藏功能区「帮助」页（manifest hideTabs 协议示例），卸载后自动恢复。",
+  "file": "main.js",
+  "hideTabs": ["Help"],
+  "apps": ["wordcraft"]
+}

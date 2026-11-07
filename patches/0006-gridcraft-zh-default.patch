@@ -1,0 +1,31 @@
+# 内核口子补丁 0006：GridCraft Web 默认界面语言 zh-hans
+# gridcraft-main/apps/gridcraft-web/index.html 内联默认语言脚本（功能 1 遗留，独立改动）。#
+# 应用（在 .kernel-src/wordcraft-main 或对应检出目录下，按编号顺序）：
+#   git apply --check ../../patches/<本文件>
+#   git apply ../../patches/<本文件>
+# 撤销：git apply -R ../../patches/<本文件>
+# 升级后 apply 失败时按各 hunk 内容手工重放（每个 hunk 均为独立小改动）。
+diff --git a/.kernel-src/gridcraft-main/apps/gridcraft-web/index.html b/.kernel-src/gridcraft-main/apps/gridcraft-web/index.html
+index 321aa30..ff2e4ec 100644
+--- a/.kernel-src/gridcraft-main/apps/gridcraft-web/index.html
++++ b/.kernel-src/gridcraft-main/apps/gridcraft-web/index.html
+@@ -4,6 +4,18 @@
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <title>GridCraft</title>
++  <script>
++    // 默认界面语言：简体中文（craft-i18n 内置 zh-hans）。用户在选项里手选过语言则尊重其选择。
++    try {
++      var KEY = 'gridcraft.ui';
++      var prefs = {};
++      try { prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { prefs = {}; }
++      if (!prefs.language || prefs.language === 'auto') {
++        prefs.language = 'zh-hans';
++        localStorage.setItem(KEY, JSON.stringify(prefs));
++      }
++    } catch (e) { /* localStorage 不可用时保持 auto */ }
++  </script>
+   <link data-trunk rel="icon" href="../../assets/app-icon/gridcraft.ico" />
+   <link data-trunk rel="rust" data-bin="gridcraft-web" data-wasm-opt="z" data-weak-refs />
+   <style>
+

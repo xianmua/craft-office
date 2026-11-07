@@ -36,6 +36,11 @@ paths = ["/*"]
 host = "calibre-ebook.com"
 paths = ["/downloads/demos/*"]
 
+# 演示用：filesamples 示例文档站，可删
+[[doc.allow_hosts]]
+host = "filesamples.com"
+paths = ["/samples/*"]
+
 # 插件目录：dev_dir 项目级（只读、进 git，调试热生效）；data_dir 用户级（安装落点，可写）
 # 相对路径基于后端工作目录（backend/）；支持 ~ 前缀
 [plugins]

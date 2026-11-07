@@ -46,12 +46,15 @@ pub struct Services {
     /// button, shown only when this is set). The page decides what to open.
     pub host_plugins: Option<Box<dyn Fn()>>,
     /// Web: 装载（或重载）全部插件；注册结果经 `WordApp::plugin_events` 队列逐帧送回内核。
-    /// 注入后帮助菜单出现「插件管理」。
+    /// 注入后插件页出现「插件管理」与各插件命令。
     pub plugin_load: Option<Box<dyn Fn()>>,
     /// Web: 启停一个插件（宿主写 installed.json 并重载）；确认经 `PluginEvent::Enabled` 回填。
     pub plugin_set_enabled: Option<Box<dyn Fn(&str, bool)>>,
     /// 内核 → 插件：命令执行、面板事件（channel, payload JSON），宿主分发给对应插件。
     pub plugin_invoke: Option<Box<dyn Fn(&str, serde_json::Value)>>,
+    /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
+    /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
+    pub hidden_tabs: Vec<String>,
     /// Web: told whether the document has unsaved changes after each pass, for the browser's
     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
     pub on_dirty: Option<Box<dyn Fn(bool)>>,

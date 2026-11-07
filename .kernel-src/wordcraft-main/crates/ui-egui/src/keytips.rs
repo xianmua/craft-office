@@ -75,7 +75,7 @@ impl Target {
 
 /// Word's tab letters, as Word for Windows shows them after Alt (File F, Design G, References S,
 /// Review R, View W, Help Y). File opens the Backstage.
-const TAB_LETTERS: [(&str, &str); 11] = [
+const TAB_LETTERS: [(&str, &str); 12] = [
     ("File", "F"),
     ("Home", "H"),
     ("Insert", "N"),
@@ -87,6 +87,7 @@ const TAB_LETTERS: [(&str, &str); 11] = [
     ("Review", "R"),
     ("View", "W"),
     ("Help", "Y"),
+    ("Plugins", "U"),
 ];
 
 /// Word's contextual table tabs take two letters (Alt, J, T and Alt, J, L), shown in a table.
@@ -143,9 +144,16 @@ pub fn tab_letter(tab: &str) -> &'static str {
     TAB_LETTERS.iter().chain(&TABLE_TAB_LETTERS).find(|(t, _)| *t == tab).map(|(_, l)| *l).unwrap_or("")
 }
 
-/// The tabs that carry a badge, in display order.
+/// The tabs that carry a badge, in display order. Hidden tabs ([`Services::hidden_tabs`]) take
+/// no badge, so their Alt sequences do nothing.
 pub fn badge_tabs(app: &WordApp) -> Vec<&'static str> {
-    let mut v: Vec<&'static str> = TAB_LETTERS.iter().filter(|(_, l)| !l.is_empty()).map(|(t, _)| *t).collect();
+    let hidden = |t: &str| app.services.hidden_tabs.iter().any(|h| h == t);
+    let mut v: Vec<&'static str> = TAB_LETTERS
+        .iter()
+        .filter(|(_, l)| !l.is_empty())
+        .map(|(t, _)| *t)
+        .filter(|t| !hidden(t))
+        .collect();
     if crate::ribbon::in_table_public(app) {
         v.extend_from_slice(&["Table Design", "Table Layout"]);
     }
@@ -393,6 +401,8 @@ fn controls(tab: &str) -> Vec<Control> {
             c("Macros", "tools.macros"),
         ],
         "Help" => vec![d("Help", "about"), c("Community Discord", "ui.discord"), d("Commands", "commands")],
+        // 插件命令是运行时注册的，进不了这份静态表：Alt 导航只给「插件管理」。
+        "Plugins" => vec![c("Plugins", "ui.plugins")],
         "Table Design" => {
             vec![m("Shading", "table.shading"), m("Borders", "table.borders"), c("Border Painter", "table.borderPainter")]
         }

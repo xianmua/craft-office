@@ -84,7 +84,6 @@ async fn main() -> std::io::Result<()> {
             .service(routes::plugins::plugin_file)
             .service(routes::page::health)
             .service(routes::page::artcraft_file)
-            .service(routes::page::office_page)
             .service(routes::page::office_root)
             .default_service(web::to(routes::page::spa_fallback))
     })

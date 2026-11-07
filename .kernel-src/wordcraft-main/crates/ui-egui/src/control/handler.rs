@@ -99,7 +99,7 @@ const UNSAVED: &str = "the document has unsaved changes: save it first, or pass 
 const NO_DOCUMENT: &str = "no document is open; create one (file.new) or open one (file.open) first";
 
 /// The methods that take `doc`.
-const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "document.text", "ui.render"];
+const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "document.text", "document.pages", "ui.render"];
 
 /// The open document other than the active one that a request's `doc` names; `None` for the
 /// active document (no `doc`, null, or the active document's id). An id that names no open
@@ -213,7 +213,7 @@ pub fn handle(app: &mut WordApp, ctx: &egui::Context, req: &ControlRequest) -> O
             ok(Value::Array(commands))
         }
         // The Start screen's empty window has no document to inspect or render (#1129).
-        "document.inspect" | "document.text" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
+        "document.inspect" | "document.text" | "document.pages" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
         "document.inspect" => match app.session.run("document.inspect", p) {
             Ok(v) => ok(v),
             Err(e) => err(e),
@@ -226,6 +226,13 @@ pub fn handle(app: &mut WordApp, ctx: &egui::Context, req: &ControlRequest) -> O
             } else {
                 ok(json!({"selection": true, "text": selection}))
             }
+        }
+        // 页映射：每页起始的 body block（0 基），页 p 覆盖 block first[p] .. first[p+1]-1。
+        "document.pages" => {
+            let lo = wordcraft_layout::LayoutOptions::default();
+            let l = wordcraft_layout::layout(&app.session.doc, &mut wordcraft_layout::LayoutCache::new(), &lo);
+            let first: Vec<usize> = l.pages.iter().map(|pg| pg.first_block).collect();
+            ok(json!({ "count": first.len(), "first": first }))
         }
         "ui.inspect" => ok(inspect(app, ctx)),
         "ui.parity" => ok(wordcraft_engine::catalog::parity(&app.session.registry)),

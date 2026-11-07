@@ -63,7 +63,7 @@ use layout::{columns_items, margins_items, orientation_items};
 use mailings::mailings;
 use picture::picture_format;
 use references::{references, zotero};
-use review::{developer, help, review};
+use review::{developer, help, plugins, review};
 #[cfg(test)]
 pub(crate) use shape::gradient_menu;
 use shape::shape_format;
@@ -122,6 +122,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             tabs.push((ct.to_string(), false));
         }
     }
+    // 宿主/插件声明隐藏的 tab（Services::hidden_tabs）：整页不渲染；File 永不隐藏。
+    // 当前 tab 被隐藏时，下方 resolve_tab 会自动切到相邻 tab。
+    tabs.retain(|(n, _)| n == "File" || !app.services.hidden_tabs.iter().any(|h| h == n));
     {
         let names: Vec<&str> = tabs.iter().map(|(n, _)| n.as_str()).collect();
         let next = resolve_tab(&app.ui.tab, &names);
@@ -341,8 +344,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         .show(ui, |ui| {
             // Right-click on the ribbon (outside a button): Customize Ribbon. Registered first, so
             // the buttons drawn over it keep their own clicks.
-            // No document open (#1129): every command is greyed out but Help's.
-            if !app.has_document() && app.ui.tab != "Help" {
+            // No document open (#1129): every command is greyed out but Help's and Plugins'.
+            if !app.has_document() && app.ui.tab != "Help" && app.ui.tab != "Plugins" {
                 ui.disable();
             }
             let bg = ui.interact(ui.max_rect(), ui.scope_id().with("ribbon_background"), Sense::click());
@@ -392,6 +395,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                         "Developer" => developer(app, ui),
                         "Zotero" => zotero(app, ui),
                         "Help" => help(app, ui),
+                        "Plugins" => plugins(app, ui),
                         "Table Design" => table_design(app, ui),
                         "Table Layout" => table_layout(app, ui),
                         "Equation" if app.session.math.is_some() => crate::equation_tab::show(app, ui),

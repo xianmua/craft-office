@@ -1,0 +1,50 @@
+# 内核口子补丁 0005：控制通道 document.text / document.pages
+# control/handler.rs：ctx.doc.getText（选区优先）与分页映射（每页起始 block）。#
+# 应用（在 .kernel-src/wordcraft-main 或对应检出目录下，按编号顺序）：
+#   git apply --check ../../patches/<本文件>
+#   git apply ../../patches/<本文件>
+# 撤销：git apply -R ../../patches/<本文件>
+# 升级后 apply 失败时按各 hunk 内容手工重放（每个 hunk 均为独立小改动）。
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/control/handler.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/control/handler.rs
+index 17dbd40..d8c2cfb 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/control/handler.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/control/handler.rs
+@@ -99,7 +99,7 @@ const UNSAVED: &str = "the document has unsaved changes: save it first, or pass
+ const NO_DOCUMENT: &str = "no document is open; create one (file.new) or open one (file.open) first";
+ 
+ /// The methods that take `doc`.
+-const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "ui.render"];
++const DOC_METHODS: &[&str] = &["engine.execute", "command", "document.inspect", "document.text", "document.pages", "ui.render"];
+ 
+ /// The open document other than the active one that a request's `doc` names; `None` for the
+ /// active document (no `doc`, null, or the active document's id). An id that names no open
+@@ -213,11 +213,27 @@ pub fn handle(app: &mut WordApp, ctx: &egui::Context, req: &ControlRequest) -> O
+             ok(Value::Array(commands))
+         }
+         // The Start screen's empty window has no document to inspect or render (#1129).
+-        "document.inspect" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
++        "document.inspect" | "document.text" | "document.pages" | "ui.render" if !app.has_document() => err(NO_DOCUMENT),
+         "document.inspect" => match app.session.run("document.inspect", p) {
+             Ok(v) => ok(v),
+             Err(e) => err(e),
+         },
++        // 插件 ctx.doc 的文本源：有选区给选区（selection 为 true），否则给全文。
++        "document.text" => {
++            let selection = app.session.selected_text();
++            if selection.trim().is_empty() {
++                ok(json!({"selection": false, "text": app.session.doc.plain_text(wordcraft_doc::StoryRef::Body)}))
++            } else {
++                ok(json!({"selection": true, "text": selection}))
++            }
++        }
++        // 页映射：每页起始的 body block（0 基），页 p 覆盖 block first[p] .. first[p+1]-1。
++        "document.pages" => {
++            let lo = wordcraft_layout::LayoutOptions::default();
++            let l = wordcraft_layout::layout(&app.session.doc, &mut wordcraft_layout::LayoutCache::new(), &lo);
++            let first: Vec<usize> = l.pages.iter().map(|pg| pg.first_block).collect();
++            ok(json!({ "count": first.len(), "first": first }))
++        }
+         "ui.inspect" => ok(inspect(app, ctx)),
+         "ui.parity" => ok(wordcraft_engine::catalog::parity(&app.session.registry)),
+         "ui.click" => {
+

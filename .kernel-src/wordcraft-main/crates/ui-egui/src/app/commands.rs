@@ -106,6 +106,16 @@ impl WordApp {
         r
     }
 
+    /// 插件/控制通道活动延长工具栏抑制窗口（活动期 + 2 秒宽限内浮动格式工具栏不弹）。
+    pub fn note_remote_activity(&mut self, ctx: &egui::Context) {
+        self.canvas.remote_until = ctx.input(|i| i.time) + 2.0;
+    }
+
+    /// 是否处于插件/控制通道活动窗口内（见 `note_remote_activity`）。
+    pub fn remote_active(&self, ctx: &egui::Context) -> bool {
+        ctx.input(|i| i.time) < self.canvas.remote_until
+    }
+
     /// Run a command for a script or an agent (control channel, MCP bridge): never asks first.
     /// UI-level commands (`ui.*`) are handled here, the rest by the engine.
     pub fn execute(&mut self, id: &str, params: Value) -> Result<Value, String> {

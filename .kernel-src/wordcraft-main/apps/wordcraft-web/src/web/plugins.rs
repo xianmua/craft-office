@@ -14,6 +14,9 @@ use wasm_bindgen::JsValue;
 use wordcraft_ui_egui::plugins::{PluginEvent, PluginEvents};
 use wordcraft_ui_egui::{WordApp, control};
 
+/// 当前内核名：manifest `apps` 声明按此过滤（缺省/空 = 全应用可用）。
+const KERNEL: &str = "wordcraft";
+
 /// 内核页面里的插件桥：Promise 化 send/reply、ctx 工厂、分发器与装载器。
 const BOOTSTRAP: &str = r#"
 (function () {
@@ -49,8 +52,8 @@ const BOOTSTRAP: &str = r#"
     send('plugins.panels', { plugin: pluginId, panels: list(entry.panels) });
   }
 
-  // OpenAI 兼容 SSE：攒 delta.content，结束兑成完整文本。
-  function aiChat(prompt) {
+  // OpenAI 兼容 SSE：攒 delta.content，结束兑成完整文本；onChunk 逐块回调（流式渲染）。
+  function aiChat(prompt, onChunk) {
     var messages = typeof prompt === 'string' ? [{ role: 'user', content: prompt }] : prompt;
     return fetch('/api/ai/chat', {
       method: 'POST',
@@ -78,7 +81,10 @@ const BOOTSTRAP: &str = r#"
               try { v = JSON.parse(data); } catch (e) { return; }
               if (v.error) throw new Error(v.error.message || '上游返回错误');
               var delta = v.choices && v.choices[0] && v.choices[0].delta && v.choices[0].delta.content;
-              if (delta) full += delta;
+              if (delta) {
+                full += delta;
+                if (onChunk) { try { onChunk(delta); } catch (e) {} }
+              }
             });
           }
           return step();
@@ -109,9 +115,11 @@ const BOOTSTRAP: &str = r#"
         getText: function () { return send('document.text', {}).then(function (r) { return r.selection ? '' : r.text; }); },
         getSelectedText: function () { return send('document.text', {}).then(function (r) { return r.selection ? r.text : ''; }); },
         insert: function (text) { return send('engine.execute', { command: 'edit.paste', params: { text: text } }); },
-        replaceSelected: function (text) { return send('engine.execute', { command: 'edit.paste', params: { text: text } }); }
+        replaceSelected: function (text) { return send('engine.execute', { command: 'edit.paste', params: { text: text } }); },
+        execute: function (command, params) { return send('engine.execute', { command: command, params: params || {} }); },
+        pages: function () { return send('document.pages', {}); }
       },
-      ai: { chat: aiChat },
+      ai: { chat: function (messages, onChunk) { return aiChat(messages, onChunk); } },
       ui: {
         toast: function (message) { send('ui.toast', { message: String(message) }); },
         dialog: function (title, text) { send('ui.dialog', { title: String(title), text: String(text) }); }
@@ -163,6 +171,9 @@ pub struct PluginRuntime {
     requests: Rc<RefCell<Vec<String>>>,
     replies: Rc<RefCell<Vec<String>>>,
     events: PluginEvents,
+    /// 各启用插件 manifest 声明的 hideTabs 并集（内核 tab 英文原名）；pump 每帧同步进
+    /// `app.services.hidden_tabs`，内核据此隐藏 ribbon 页。
+    hidden_tabs: Rc<RefCell<Vec<String>>>,
 }
 
 impl PluginRuntime {
@@ -170,7 +181,8 @@ impl PluginRuntime {
     pub fn start(events: PluginEvents, ctx: egui::Context) -> Rc<PluginRuntime> {
         let requests: Rc<RefCell<Vec<String>>> = Default::default();
         let replies: Rc<RefCell<Vec<String>>> = Default::default();
-        let runtime = Rc::new(PluginRuntime { requests: requests.clone(), replies, events });
+        let hidden_tabs: Rc<RefCell<Vec<String>>> = Default::default();
+        let runtime = Rc::new(PluginRuntime { requests: requests.clone(), replies, events, hidden_tabs });
         let Some(window) = web_sys::window() else { return runtime };
 
         // 插件 JS → 内核的 send：一行 JSON 进请求队列，下一帧 pump 排空。
@@ -207,6 +219,7 @@ impl PluginRuntime {
 
     /// 取市场清单与已安装状态，把启用的插件交给 `__craftPluginLoad` 装载。
     pub fn load(&self) {
+        let hidden_tabs = self.hidden_tabs.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let specs = match fetch_json("/api/plugins").await {
                 Ok(v) => {
@@ -217,10 +230,16 @@ impl PluginRuntime {
                         .filter(|entry| entry.get("enabled").and_then(Value::as_bool).unwrap_or(false))
                         .filter_map(|entry| entry.get("id").and_then(Value::as_str))
                         .filter_map(|id| market.iter().find(|m| m.get("id").and_then(Value::as_str) == Some(id)))
+                        // manifest apps 声明：缺省/空数组 = 全应用；否则需包含当前内核名。
+                        .filter(|m| match m.get("apps").and_then(Value::as_array) {
+                            Some(apps) if !apps.is_empty() => apps.iter().filter_map(Value::as_str).any(|a| a == KERNEL),
+                            _ => true,
+                        })
                         .map(|m| {
                             json!({
                                 "id": m.get("id").and_then(Value::as_str).unwrap_or_default(),
                                 "name": m.get("name").and_then(Value::as_str).unwrap_or_default(),
+                                "hideTabs": m.get("hideTabs").cloned().unwrap_or(json!([])),
                             })
                         })
                         .collect::<Vec<_>>()
@@ -230,6 +249,18 @@ impl PluginRuntime {
                     Vec::new()
                 }
             };
+            // hideTabs 并集（File 不允许隐藏，这里与内核双重防护）。
+            let mut hidden: Vec<String> = specs
+                .iter()
+                .filter_map(|s| s.get("hideTabs").and_then(Value::as_array))
+                .flatten()
+                .filter_map(Value::as_str)
+                .filter(|t| *t != "File")
+                .map(str::to_string)
+                .collect();
+            hidden.sort();
+            hidden.dedup();
+            *hidden_tabs.borrow_mut() = hidden;
             call_js("__craftPluginLoad", &json!(specs).to_string());
         });
     }
@@ -241,6 +272,8 @@ impl PluginRuntime {
 
     /// 每帧排空：请求分发进内核（control/事件/命令），回复兑现插件的 Promise。
     pub fn pump(&self, app: &mut WordApp, ctx: &egui::Context) {
+        // 插件声明的隐藏 tab 同步进内核（装载晚于首帧，需每帧跟随）。
+        app.services.hidden_tabs = self.hidden_tabs.borrow().clone();
         for raw in std::mem::take(&mut *self.requests.borrow_mut()) {
             let Ok(Value::Object(req)) = serde_json::from_str::<Value>(&raw) else { continue };
             let id = req.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
@@ -262,9 +295,11 @@ impl PluginRuntime {
     /// 一个请求的内核侧处理：文档/命令走 control（同步出值），其余转事件队列。
     /// `Ok` 携带给插件的 result 载荷。
     fn route(&self, app: &mut WordApp, ctx: &egui::Context, channel: &str, params: Value) -> Result<Value, String> {
+        // 远程操作期间收起浮动格式工具栏（AI 选中目标时不再弹出）。
+        app.note_remote_activity(ctx);
         match channel {
             // control::handle 的 Outcome::Done 已是 {"ok", "result"/"error"} 形状。
-            "engine.execute" | "document.text" => {
+            "engine.execute" | "document.text" | "document.pages" => {
                 let (req, _rx) = control::ControlRequest::new(channel, params);
                 match control::handle(app, ctx, &req) {
                     control::Outcome::Done(v) => {

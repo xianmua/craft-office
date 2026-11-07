@@ -1,0 +1,71 @@
+# 内核口子补丁：宿主可隐藏功能区 tab（hidden_tabs 扩展点）
+#
+# 用途：.kernel-src/wordcraft-main 升级替换源码后，重放本补丁恢复扩展点。
+# 「去帮助」等功能由插件（plugins/hide-help 等）声明 manifest hideTabs，不在本补丁内。
+#
+# 应用（在仓库根目录）：
+#   git apply patches/0001-host-hidden-tabs.patch
+# 试运行（只校验不写入）：
+#   git apply --check patches/0001-host-hidden-tabs.patch
+# 反向撤销：
+#   git apply -R patches/0001-host-hidden-tabs.patch
+#
+# 若升级后上下文变化导致 apply 失败，按以下手工重放：
+#   1. crates/ui-egui/src/services.rs：pub host_save 字段后加（含上方两行 /// 注释）
+#      pub hidden_tabs: Vec<String>,
+#   2. crates/ui-egui/src/ribbon.rs：show() 中构建 tabs（contextual 循环）之后、
+#      resolve_tab 块之前加
+#      tabs.retain(|(n, _)| n == "File" || !app.services.hidden_tabs.iter().any(|h| h == n));
+#   3. crates/ui-egui/src/keytips.rs：badge_tabs() 的 TAB_LETTERS 过滤链追加
+#      .filter(|t| !app.services.hidden_tabs.iter().any(|h| h == t))
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
+index 61869c1..3f3a233 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
+@@ -144,9 +144,16 @@ pub fn tab_letter(tab: &str) -> &'static str {
+     TAB_LETTERS.iter().chain(&TABLE_TAB_LETTERS).find(|(t, _)| *t == tab).map(|(_, l)| *l).unwrap_or("")
+ }
+ 
+-/// The tabs that carry a badge, in display order.
++/// The tabs that carry a badge, in display order. Hidden tabs ([`Services::hidden_tabs`]) take
++/// no badge, so their Alt sequences do nothing.
+ pub fn badge_tabs(app: &WordApp) -> Vec<&'static str> {
+-    let mut v: Vec<&'static str> = TAB_LETTERS.iter().filter(|(_, l)| !l.is_empty()).map(|(t, _)| *t).collect();
++    let hidden = |t: &str| app.services.hidden_tabs.iter().any(|h| h == t);
++    let mut v: Vec<&'static str> = TAB_LETTERS
++        .iter()
++        .filter(|(_, l)| !l.is_empty())
++        .map(|(t, _)| *t)
++        .filter(|t| !hidden(t))
++        .collect();
+     if crate::ribbon::in_table_public(app) {
+         v.extend_from_slice(&["Table Design", "Table Layout"]);
+     }
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
+index c64465a..752b2e9 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
+@@ -122,6 +122,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
+             tabs.push((ct.to_string(), false));
+         }
+     }
++    // 宿主/插件声明隐藏的 tab（Services::hidden_tabs）：整页不渲染；File 永不隐藏。
++    // 当前 tab 被隐藏时，下方 resolve_tab 会自动切到相邻 tab。
++    tabs.retain(|(n, _)| n == "File" || !app.services.hidden_tabs.iter().any(|h| h == n));
+     {
+         let names: Vec<&str> = tabs.iter().map(|(n, _)| n.as_str()).collect();
+         let next = resolve_tab(&app.ui.tab, &names);
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+index fc49eb7..e0ad93d 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+@@ -42,6 +42,9 @@
+     /// under its own name and format, as on the desktop, and a Save or Save As that keeps
+     /// everything makes that name the document's file, so the next Save goes to it.
+     pub host_save: Option<HostSaveFn>,
++    /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
++    /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
++    pub hidden_tabs: Vec<String>,
+     /// Web: told whether the document has unsaved changes after each pass, for the browser's
+     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
+     pub on_dirty: Option<Box<dyn Fn(bool)>>,

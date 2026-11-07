@@ -32,57 +32,6 @@ pub async fn office_root(cfg: web::Data<Arc<AppConfig>>) -> ActixResult<HttpResp
 }
 
 #[derive(serde::Deserialize)]
-struct OfficeQuery {
-    url: Option<String>,
-}
-
-/// /office 入口：带 ?url= 时按扩展名分发到对应产品页（/wordcraft 等），
-/// 产品未就位（wasm 产物缺失）则留在 /office 走通用流程；不带 url 就是前端入口页。
-#[get("/office")]
-pub async fn office_page(
-    req: HttpRequest,
-    cfg: web::Data<Arc<AppConfig>>,
-) -> ActixResult<HttpResponse> {
-    let url = web::Query::<OfficeQuery>::from_query(req.query_string())
-        .ok()
-        .and_then(|q| q.url.clone())
-        .map(|u| u.trim().to_string())
-        .filter(|u| !u.is_empty());
-
-    if let Some(url) = url {
-        let cfg_ref: &Arc<AppConfig> = &cfg;
-        if let Some(route) = kernel_route_of(cfg_ref, &url) {
-            // 手动拼接：form_urlencoded 的 Serializer 对带路径前缀的串补的是 &，不是 ?
-            let encoded: String = url::form_urlencoded::byte_serialize(url.as_bytes()).collect();
-            let target = format!("/{route}?url={encoded}");
-            return Ok(HttpResponse::Found()
-                .insert_header(("Location", target))
-                .finish());
-        }
-    }
-
-    let cfg: &Arc<AppConfig> = &cfg;
-    Ok(html_response(index_html(cfg.as_ref()).await?))
-}
-
-/// 按扩展名选产品；返回 None 表示留在 /office。
-fn kernel_route_of(cfg: &AppConfig, raw_url: &str) -> Option<&'static str> {
-    let ext = crate::routes::doc::detect_ext(raw_url);
-    let (route, static_name): (&str, &str) = match ext.as_str() {
-        "docx" | "doc" | "odt" | "rtf" | "md" | "tex" | "txt" | "html" => ("wordcraft", "wordcraft"),
-        "xlsx" | "xls" | "xlsb" | "csv" | "ods" => ("gridcraft", "gridcraft"),
-        "pptx" | "ppt" => ("deckcraft", "deckcraft"),
-        _ => return None,
-    };
-    // 产品页就位 = 静态目录里有对应内核产物
-    if Path::new(&cfg.server.static_dir).join(static_name).join("index.html").exists() {
-        Some(route)
-    } else {
-        None
-    }
-}
-
-#[derive(serde::Deserialize)]
 struct ProductQuery {
     url: Option<String>,
 }
@@ -188,7 +137,7 @@ fetch('/api/doc/proxy?url=' + encodeURIComponent(DOC_URL))
     if (ready) {{ openInKernel(buf, name); hideStatus(); }}
     else {{ pending = {{ name: name, bytes: buf }}; }}
   }})
-  .catch(function(e) {{ showErr('文档拉取失败：' + e.message + '<br>请检查链接是否可访问，或在 /office 页面重试。'); }});
+  .catch(function(e) {{ showErr('文档拉取失败：' + e.message + '<br>请检查链接是否可访问。'); }});
 }})();
 </script>
 </body>

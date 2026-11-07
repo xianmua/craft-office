@@ -1,0 +1,59 @@
+# 内核口子补丁 0004：远程操作期间抑制浮动格式工具栏
+# canvas.rs remote_until 字段 + app/commands.rs note_remote_activity/remote_active。
+# 调用方在 0003 的 web/plugins.rs（route 入口 note_remote_activity）。#
+# 应用（在 .kernel-src/wordcraft-main 或对应检出目录下，按编号顺序）：
+#   git apply --check ../../patches/<本文件>
+#   git apply ../../patches/<本文件>
+# 撤销：git apply -R ../../patches/<本文件>
+# 升级后 apply 失败时按各 hunk 内容手工重放（每个 hunk 均为独立小改动）。
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
+index 5b28569..798d17d 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
+@@ -106,6 +106,16 @@ impl WordApp {
+         r
+     }
+ 
++    /// 插件/控制通道活动延长工具栏抑制窗口（活动期 + 2 秒宽限内浮动格式工具栏不弹）。
++    pub fn note_remote_activity(&mut self, ctx: &egui::Context) {
++        self.canvas.remote_until = ctx.input(|i| i.time) + 2.0;
++    }
++
++    /// 是否处于插件/控制通道活动窗口内（见 `note_remote_activity`）。
++    pub fn remote_active(&self, ctx: &egui::Context) -> bool {
++        ctx.input(|i| i.time) < self.canvas.remote_until
++    }
++
+     /// Run a command for a script or an agent (control channel, MCP bridge): never asks first.
+     /// UI-level commands (`ui.*`) are handled here, the rest by the engine.
+     pub fn execute(&mut self, id: &str, params: Value) -> Result<Value, String> {
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/canvas.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/canvas.rs
+index 6e17921..fb159ad 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/canvas.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/canvas.rs
+@@ -175,6 +175,8 @@ pub struct CanvasState {
+     pub eq_options: Option<EquationFrame>,
+     /// Screen rect of the selection's first line, for the floating mini toolbar.
+     pub mini_anchor: Option<Rect>,
++    /// egui time until which plugin/control-channel activity keeps the mini toolbar down.
++    pub remote_until: f64,
+     /// The selection the mini toolbar was put away for by a click outside the document (the
+     /// ribbon, a pane, the status bar); it comes back when the selection changes.
+     pub mini_dismissed: Option<wordcraft_engine::Selection>,
+@@ -389,6 +391,7 @@ impl Default for CanvasState {
+             context_menu_at: None,
+             eq_options: None,
+             mini_anchor: None,
++            remote_until: 0.0,
+             mini_dismissed: None,
+             pasted: false,
+             v_pressed: false,
+@@ -1272,6 +1275,7 @@ fn finish_canvas_frame(finish: CanvasFinish<'_>, out: egui::scroll_area::ScrollA
+     crate::mini_toolbar::track_dismissal(app, ui.ctx(), area);
+     if let Some(sel) = app.canvas.mini_anchor
+         && app.ui.mini_toolbar
++        && !app.remote_active(ui.ctx())
+     {
+         crate::mini_toolbar::show(app, ui.ctx(), sel, out.inner_rect);
+     }
+

@@ -1,0 +1,1021 @@
+# 内核口子补丁 0002：插件系统（内核层）
+# crates/ui-egui/src/plugins/*（注册表/动态面板/声明式渲染/管理器）、Plugins 功能页与
+# 快捷键、panes 动态面板接线、engine TABS 加 Plugins、zh-hans 词条。
+# 前置：0001（hidden_tabs 扩展点，本补丁的 ribbon/keytips/services hunk 已排除其内容）。#
+# 应用（在 .kernel-src/wordcraft-main 或对应检出目录下，按编号顺序）：
+#   git apply --check ../../patches/<本文件>
+#   git apply ../../patches/<本文件>
+# 撤销：git apply -R ../../patches/<本文件>
+# 升级后 apply 失败时按各 hunk 内容手工重放（每个 hunk 均为独立小改动）。
+diff --git a/.kernel-src/craft-i18n-main/locales/zh-hans/common.tsv b/.kernel-src/craft-i18n-main/locales/zh-hans/common.tsv
+index 2045575..87d4ece 100644
+--- a/.kernel-src/craft-i18n-main/locales/zh-hans/common.tsv
++++ b/.kernel-src/craft-i18n-main/locales/zh-hans/common.tsv
+@@ -864,6 +864,7 @@
+ 	Pixels	像素
+ 	Play	播放
+ 	Plug-ins	增效工具
++	Plugins	插件
+ 	Point	点
+ 	Pointillize	点彩
+ 	Pointillize…	点彩…
+
+diff --git a/.kernel-src/craft-i18n-main/locales/zh-hans/wordcraft.tsv b/.kernel-src/craft-i18n-main/locales/zh-hans/wordcraft.tsv
+index 0403799..ab87bce 100644
+--- a/.kernel-src/craft-i18n-main/locales/zh-hans/wordcraft.tsv
++++ b/.kernel-src/craft-i18n-main/locales/zh-hans/wordcraft.tsv
+@@ -12,6 +12,7 @@
+ # consulted or copied; add entries the same way.
+ 
+ 	% of all commits	占全部提交的百分比
++	Plugins	插件管理
+ 	(All)	(全部)
+ 	(Custom)	(自定义)
+ 	(no style)	（无样式）
+
+diff --git a/.kernel-src/wordcraft-main/crates/engine/src/ribbon.rs b/.kernel-src/wordcraft-main/crates/engine/src/ribbon.rs
+index 49cb879..ffb706e 100644
+--- a/.kernel-src/wordcraft-main/crates/engine/src/ribbon.rs
++++ b/.kernel-src/wordcraft-main/crates/engine/src/ribbon.rs
+@@ -15,8 +15,8 @@ use crate::Registry;
+ 
+ /// The ribbon's tabs in their default order. `File` opens Backstage: it is always first and
+ /// isn't part of the customizable list.
+-pub const TABS: [&str; 13] =
+-    ["File", "Home", "Insert", "Draw", "Design", "Layout", "References", "Mailings", "Review", "View", "Developer", "Zotero", "Help"];
++pub const TABS: [&str; 14] =
++    ["File", "Home", "Insert", "Draw", "Design", "Layout", "References", "Mailings", "Review", "View", "Developer", "Zotero", "Help", "Plugins"];
+ /// Tabs that come up with the selection; custom tabs can't take their names.
+ pub const CONTEXTUAL_TABS: [&str; 7] =
+     ["Table Design", "Table Layout", "Picture Format", "Shape Format", "Equation", "Chart Design", "SmartArt Design"];
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
+index db417f3..7019ba5 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
+@@ -39,6 +39,7 @@ impl WordApp {
+             colors,
+             restrict,
+             spelling_review,
++            plugin_panes,
+             status_msg,
+             previews,
+             change_picture_target,
+@@ -154,6 +155,7 @@ impl WordApp {
+             colors,
+             restrict,
+             spelling_review,
++            plugin_panes,
+             status_msg,
+             previews,
+             change_picture_target,
+@@ -184,6 +186,9 @@ impl WordApp {
+             shown_document,
+             #[cfg(not(target_arch = "wasm32"))]
+             file_browser,
++            // Web 宿主注入；桌面保持 None。
++            plugin_events: None,
++            plugins: Default::default(),
+         }
+     }
+ 
+@@ -192,6 +197,39 @@ impl WordApp {
+         self
+     }
+ 
++    /// 排空插件事件队列（宿主经 `Services::plugin_*` 钩子 push）：注册表与面板状态逐帧应用。
++    fn drain_plugins(&mut self, ctx: &egui::Context) {
++        let Some(queue) = self.plugin_events.as_ref() else { return };
++        let events = std::mem::take(&mut *queue.lock().unwrap_or_else(|e| e.into_inner()));
++        if events.is_empty() {
++            return;
++        }
++        for event in events {
++            match event {
++                crate::plugins::PluginEvent::Ready => {
++                    // 重载换句柄：旧面板全部关闭（预期行为，方案已声明）。
++                    self.plugins.clear();
++                    self.plugin_panes = crate::plugins::Panes::default();
++                }
++                crate::plugins::PluginEvent::Commands { plugin, commands } => self.plugins.set_commands(&plugin, commands),
++                crate::plugins::PluginEvent::Panels { plugin, panels } => self.plugins.add_panels(&plugin, panels),
++                crate::plugins::PluginEvent::PanelState { panel, state } => {
++                    if let Some(h) = self.plugins.panel_handle(&panel)
++                        && self.plugin_panes.get(h).is_some()
++                    {
++                        self.plugin_panes.apply_state(h, &state);
++                    }
++                    ctx.request_repaint();
++                }
++                crate::plugins::PluginEvent::Enabled { id, enabled } => self.plugins.set_enabled(&id, enabled),
++                crate::plugins::PluginEvent::Toast { message } => self.status(message),
++                crate::plugins::PluginEvent::Dialog { title, text } => self.plugins.dialogs.push((title, text)),
++                crate::plugins::PluginEvent::Error { message, .. } => self.status(message),
++            }
++        }
++        ctx.request_repaint();
++    }
++
+     /// Start-up with no document to open (#766): show File › Home (Blank document, the templates
+     /// and Recent), as Word starts, when the Start screen setting is on (the default). No document
+     /// is open until the user picks Blank document or a template or opens a file (#1129): Esc or
+@@ -320,6 +358,7 @@ impl WordApp {
+             self.poll_printing(ctx);
+         }
+         self.drain_control(ctx);
++        self.drain_plugins(ctx);
+         // The active window's own work; with native windows each window does it again as it
+         // draws, for itself.
+         self.window_work(ctx);
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
+index 5b28569..798d17d 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/commands.rs
+@@ -523,6 +533,63 @@ impl WordApp {
+                 }
+                 json!({"backstage": self.ui.backstage})
+             }
++            "ui.hostPlugins" => {
++                // Web, framed: the page shows its plugin manager (`Services::host_plugins`).
++                if let Some(plugins) = self.services.host_plugins.as_ref() {
++                    plugins();
++                }
++                Value::Null
++            }
++            "ui.plugins" => {
++                // 内核插件管理器：仅当宿主注入了插件运行时（web 版）时可用。
++                if self.plugin_events.is_some() {
++                    self.plugins.manager_open = true;
++                } else {
++                    self.status("插件功能仅在接入插件宿主的浏览器版可用.");
++                }
++                Value::Null
++            }
++            "ui.plugin.enable" => {
++                // 启停插件：宿主写 installed.json 并重载，确认经 PluginEvent::Enabled 回填。
++                let id = s("id").unwrap_or_default().to_string();
++                let enabled = p.get("enabled").and_then(Value::as_bool).unwrap_or(true);
++                if let Some(set) = self.services.plugin_set_enabled.as_ref() {
++                    set(&id, enabled);
++                }
++                Value::Null
++            }
++            "ui.plugin.reload" => {
++                if let Some(load) = self.services.plugin_load.as_ref() {
++                    load();
++                }
++                Value::Null
++            }
++            "ui.plugin.run" => {
++                // 执行插件命令：交给宿主分发到插件。
++                let id = s("id").unwrap_or_default().to_string();
++                if let Some(invoke) = self.services.plugin_invoke.as_ref() {
++                    invoke("command.run", json!({"id": id}));
++                }
++                Value::Null
++            }
++            "ui.plugin.openPane" => {
++                // 按面板 id 打开插件面板（注册表查句柄）。
++                let id = s("panel").unwrap_or_default();
++                match self.plugins.panel_handle(id) {
++                    Some(h) => self.plugin_panes.open(h),
++                    None => self.status(format!("没有叫 {id} 的插件面板.")),
++                }
++                Value::Null
++            }
++            "ui.plugin.panelSend" => {
++                // 面板输入框发送：交给宿主分发到插件。
++                let panel = s("panel").unwrap_or_default().to_string();
++                let text = s("text").unwrap_or_default().to_string();
++                if let Some(invoke) = self.services.plugin_invoke.as_ref() {
++                    invoke("panel.send", json!({"panel": panel, "text": text}));
++                }
++                Value::Null
++            }
+             "ui.dialog" if s("name") == Some("colors") => {
+                 // The font colour's More Colors… (#606); `tab`: standard or custom.
+                 let target = colors::Target::cmd("format.color").remember(colors::Remember::FontColor);
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/frame.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/frame.rs
+index 5541598..7b72bb4 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/app/frame.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/app/frame.rs
+@@ -104,6 +104,7 @@ impl WordApp {
+         colors::show(self, ctx);
+         zotero::show_alert(self, ctx);
+         read_aloud::show(self, ctx);
++        crate::plugins::show(self, ctx);
+         crate::keytips::show(self, ctx, ui);
+         if moved(self) {
+             return;
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
+index 1c092e6..3f3a233 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
+@@ -75,7 +75,7 @@ impl Target {
+ 
+ /// Word's tab letters, as Word for Windows shows them after Alt (File F, Design G, References S,
+ /// Review R, View W, Help Y). File opens the Backstage.
+-const TAB_LETTERS: [(&str, &str); 11] = [
++const TAB_LETTERS: [(&str, &str); 12] = [
+     ("File", "F"),
+     ("Home", "H"),
+     ("Insert", "N"),
+@@ -87,6 +87,7 @@ const TAB_LETTERS: [(&str, &str); 11] = [
+     ("Review", "R"),
+     ("View", "W"),
+     ("Help", "Y"),
++    ("Plugins", "U"),
+ ];
+ 
+ /// Word's contextual table tabs take two letters (Alt, J, T and Alt, J, L), shown in a table.
+@@ -393,6 +401,8 @@ fn controls(tab: &str) -> Vec<Control> {
+             c("Macros", "tools.macros"),
+         ],
+         "Help" => vec![d("Help", "about"), c("Community Discord", "ui.discord"), d("Commands", "commands")],
++        // 插件命令是运行时注册的，进不了这份静态表：Alt 导航只给「插件管理」。
++        "Plugins" => vec![c("Plugins", "ui.plugins")],
+         "Table Design" => {
+             vec![m("Shading", "table.shading"), m("Borders", "table.borders"), c("Border Painter", "table.borderPainter")]
+         }
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/lib.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/lib.rs
+index f4345a9..5361944 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/lib.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/lib.rs
+@@ -59,6 +59,7 @@ pub mod objects;
+ pub mod options;
+ pub mod panes;
+ pub mod paste_picture;
++pub mod plugins;
+ pub mod previews;
+ pub mod print_page;
+ pub mod printing;
+@@ -481,6 +482,12 @@ pub struct WordApp {
+     pub restrict: dialogs_review::RestrictPane,
+     /// The language-aware spelling and grammar task pane.
+     pub spelling_review: Option<proofing_pane::SpellingForm>,
++    /// Web: 插件事件队列（宿主注入；桌面为 None，见 `Services::plugin_load`）。
++    pub plugin_events: Option<plugins::PluginEvents>,
++    /// 插件注册表：装载后的插件、命令与面板句柄（app 级）。
++    pub plugins: plugins::Registry,
++    /// 当前窗口开着的插件面板（per window，见 `window_ui`）。
++    pub plugin_panes: plugins::Panes,
+     pub status_msg: Option<(String, f64)>,
+     pub previews: previews::Previews,
+     /// Media key of the picture a pending Change Picture replaces (#147).
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes.rs
+index 6dc8314..aa7f281 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes.rs
+@@ -47,10 +47,11 @@ use state::pane_state;
+ pub use state::{SavedDock, SavedPane, open};
+ pub(crate) use state::{lenient_order, lenient_places};
+ 
+-/// The task panes, in their default order: each edge's first pane is outermost.
++/// The task panes, in their default order: each edge's first pane is outermost. `Plugin` is a
++/// plugin-declared panel; its payload is the registry handle (monotonic, never reused — a reload
++/// invalidates old panels on purpose).
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub enum Pane {
+-    /// SmartArt Design › Text Pane, while a SmartArt graphic WordCraft can edit is selected.
+     SmartArtText,
+     Navigation,
+     Clipboard,
+@@ -62,6 +63,8 @@ pub enum Pane {
+     RestrictEditing,
+     Proofing,
+     Comments,
++    /// 插件声明的动态面板：载荷是注册表面板句柄。
++    Plugin(u16),
+ }
+ 
+ impl Pane {
+@@ -78,6 +81,8 @@ impl Pane {
+             Self::RestrictEditing => "Restrict Editing",
+             Self::Proofing => "Proofing",
+             Self::Comments => "Comments",
++            // 实际标题由 `PaneContent::title` 查注册表；此处仅为穷举兜底。
++            Self::Plugin(_) => "插件面板",
+         }
+     }
+ 
+@@ -94,24 +99,27 @@ impl Pane {
+             Self::RestrictEditing => (Edge::End, 270.0),
+             Self::Proofing => (Edge::End, 400.0),
+             Self::Comments => (Edge::End, 290.0),
++            // 插件面板实际宽度在 `PaneContent::default_state` 查注册表。
++            Self::Plugin(_) => (Edge::End, 300.0),
+         };
+         PaneState::docked(edge, width)
+     }
+ 
+-    /// The pane's key in `ui.json`'s `panePlaces`.
+-    pub fn key(self) -> &'static str {
++    /// The pane's key in `ui.json`'s `panePlaces`. Plugin panels carry their handle.
++    pub fn key(self) -> std::borrow::Cow<'static, str> {
+         match self {
+-            Self::SmartArtText => "smartArtText",
+-            Self::Navigation => "navigation",
+-            Self::Clipboard => "clipboard",
+-            Self::Styles => "styles",
+-            Self::StyleInspector => "styleInspector",
+-            Self::Accessibility => "accessibility",
+-            Self::AltText => "altText",
+-            Self::FormatShape => "formatShape",
+-            Self::RestrictEditing => "restrictEditing",
+-            Self::Proofing => "proofing",
+-            Self::Comments => "comments",
++            Self::SmartArtText => "smartArtText".into(),
++            Self::Navigation => "navigation".into(),
++            Self::Clipboard => "clipboard".into(),
++            Self::Styles => "styles".into(),
++            Self::StyleInspector => "styleInspector".into(),
++            Self::Accessibility => "accessibility".into(),
++            Self::AltText => "altText".into(),
++            Self::FormatShape => "formatShape".into(),
++            Self::RestrictEditing => "restrictEditing".into(),
++            Self::Proofing => "proofing".into(),
++            Self::Comments => "comments".into(),
++            Self::Plugin(h) => format!("plugin:{h}").into(),
+         }
+     }
+ 
+@@ -145,6 +153,7 @@ impl Pane {
+             Self::AltText => Some("view.altTextPane"),
+             Self::FormatShape => Some("view.formatShapePane"),
+             Self::Comments => Some("view.commentsPane"),
++            Self::Plugin(_) => None,
+             Self::RestrictEditing | Self::Proofing => None,
+         }
+     }
+@@ -152,7 +161,11 @@ impl Pane {
+ 
+ impl PaneContent<Pane> for Content<'_> {
+     fn title(&self, pane: &Pane) -> String {
+-        tl!(pane.title()).into()
++        match pane {
++            // 插件面板标题查注册表；句柄失效（刚重载）时用兜底名。
++            Pane::Plugin(h) => self.app.plugins.panel(*h).map(|s| s.title.clone()).unwrap_or_else(|| "插件面板".into()),
++            _ => tl!(pane.title()).into(),
++        }
+     }
+ 
+     fn body(&mut self, ui: &mut Ui, pane: &Pane) {
+@@ -171,11 +184,19 @@ impl PaneContent<Pane> for Content<'_> {
+             Pane::RestrictEditing => crate::dialogs_review::restrict_pane(app, ui),
+             Pane::Proofing => crate::proofing_pane::show(app, ui),
+             Pane::Comments => comments(app, ui),
++            Pane::Plugin(h) => crate::plugins::panel_ui(app, ui, *h),
+         })
+     }
+ 
+     fn default_state(&self, pane: &Pane) -> PaneState {
+-        pane.default_state()
++        match pane {
++            // 插件面板：注册表声明的默认宽度，夹到停靠范围。
++            Pane::Plugin(h) => {
++                let width = self.app.plugins.panel(*h).and_then(|s| s.default_width).unwrap_or(300.0).clamp(200.0, 520.0);
++                PaneState::docked(Edge::End, width)
++            }
++            _ => pane.default_state(),
++        }
+     }
+ }
+ 
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/host.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/host.rs
+index 87c039c..5d549a3 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/host.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/host.rs
+@@ -86,6 +86,16 @@ pub(crate) fn apply(app: &mut WordApp, request: PaneRequest<Pane>) {
+         }
+         PaneRequest::Resize(Pane::Styles, width) => app.ui.styles_pane_width = Some(width),
+         PaneRequest::FloatRect(Pane::Styles, rect) => app.ui.styles_pane_float = Some(rect),
++        PaneRequest::Place(pane @ Pane::Plugin(_), place) => {
++            // 插件面板不走 ui.paneDock 命令（from_key 只认静态面板），直接记 panePlaces。
++            let dock = match place {
++                Place::Docked(Edge::Start) => SavedDock::Left,
++                Place::Docked(Edge::End) => SavedDock::Right,
++                Place::Floating => SavedDock::Float,
++                Place::Docked(Edge::Bottom) => return,
++            };
++            app.ui.pane_places.entry(pane.key().into()).or_default().dock = Some(dock);
++        }
+         PaneRequest::Place(pane, place) => {
+             let dock = match place {
+                 Place::Docked(Edge::Start) => "left",
+@@ -154,6 +164,7 @@ fn close(app: &mut WordApp, pane: Pane) {
+         Some(id) => {
+             let _ = app.run(id, json!({"value": false}));
+         }
++        None if let Pane::Plugin(h) = pane => app.plugin_panes.close(h),
+         None if pane == Pane::Proofing => app.spelling_review = None,
+         None => app.restrict.open = false,
+     }
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/state.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/state.rs
+index 67d4c59..d13798c 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/state.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/panes/state.rs
+@@ -56,6 +56,13 @@ pub fn open(app: &WordApp) -> Vec<Pane> {
+     .collect::<Vec<_>>();
+     let order = order(app);
+     open.sort_by_key(|pane| order.iter().position(|p| p == pane).unwrap_or(usize::MAX));
++    // 插件面板：per-window 开着且注册表仍在的都算开着，排在静态面板之后。
++    for (h, _) in &app.plugin_panes.open {
++        let pane = Pane::Plugin(*h);
++        if app.plugins.panel(*h).is_some() && !open.contains(&pane) {
++            open.push(pane);
++        }
++    }
+     open
+ }
+ 
+@@ -97,7 +104,7 @@ pub(crate) fn lenient_places<'de, D: serde::Deserializer<'de>>(d: D) -> Result<B
+         .iter()
+         .filter(|pane| **pane != Pane::Styles)
+         .filter_map(|pane| {
+-            let saved = map.get(pane.key())?;
++            let saved = map.get(pane.key().as_ref())?;
+             let place = SavedPane { dock: saved.get("dock").and_then(dock), float: saved.get("float").and_then(float_rect), width: None };
+             Some((pane.key().to_string(), place))
+         })
+@@ -143,8 +150,12 @@ fn stored_state(app: &WordApp, pane: Pane) -> (PaneState, bool) {
+     if pane == Pane::Styles {
+         return (styles_state(app), true);
+     }
+-    let default = pane.default_state();
+-    let Some(saved) = app.ui.pane_places.get(pane.key()) else {
++    // 插件面板的默认宽度来自注册表声明。
++    let default = match pane {
++        Pane::Plugin(h) => PaneState::docked(Edge::End, app.plugins.panel(h).and_then(|s| s.default_width).unwrap_or(300.0).clamp(200.0, 520.0)),
++        _ => pane.default_state(),
++    };
++    let Some(saved) = app.ui.pane_places.get(pane.key().as_ref()) else {
+         return (default, false);
+     };
+     let (place, explicit) = match saved.dock {
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/manager.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/manager.rs
+new file mode 100644
+index 0000000..b2d98e6
+--- /dev/null
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/manager.rs
+@@ -0,0 +1,81 @@
++//! 内核插件管理器：每个已注册插件一行（启停复选），外加打开市场与重新加载。
++//! 帮助菜单「插件管理」（`ui.plugins`）打开。启停经 `Services::plugin_set_enabled`
++//! 交宿主（写 installed.json 并重载），确认经 `PluginEvent::Enabled` 回填注册表。
++
++use egui::{Context, Ui};
++
++use crate::WordApp;
++use crate::theme::Tokens;
++
++pub(crate) fn show(app: &mut WordApp, ctx: &Context) {
++    // 弹窗与插件管理窗口相互独立，即便管理器没开也要照常渲染。
++    if app.plugins.manager_open {
++        let mut open = true;
++        egui::Window::new("插件管理")
++            .open(&mut open)
++            .resizable(false)
++            .collapsible(false)
++            .show(ctx, |ui| crate::rtl::root(ui, |ui| body(app, ui)));
++        if !open {
++            app.plugins.manager_open = false;
++        }
++    }
++    dialogs(app, ctx);
++}
++
++/// 插件经 `ctx.ui.dialog` 请求的一次性弹窗：关闭即从队列丢弃。
++fn dialogs(app: &mut WordApp, ctx: &Context) {
++    if app.plugins.dialogs.is_empty() {
++        return;
++    }
++    let pending = std::mem::take(&mut app.plugins.dialogs);
++    app.plugins.dialogs = pending
++        .into_iter()
++        .filter(|(title, text)| {
++            let mut open = true;
++            egui::Window::new(title.clone()).open(&mut open).resizable(false).collapsible(false).show(ctx, |ui| {
++                crate::rtl::root(ui, |ui| ui.add(egui::Label::new(egui::RichText::new(text.clone())).wrap()));
++            });
++            open
++        })
++        .collect();
++}
++
++fn body(app: &mut WordApp, ui: &mut Ui) {
++    let t = Tokens::get(ui.ctx());
++    if app.plugins.plugins.is_empty() {
++        ui.label(egui::RichText::new("还没有已装载的插件.").color(t.text_dim));
++        ui.add_space(6.0);
++    }
++    // 先取出快照再逐行画，避免闭包里再借 `app`。
++    let snapshot: Vec<(String, String, bool)> =
++        app.plugins.plugins.iter().map(|p| (p.id.clone(), if p.name.is_empty() { p.id.clone() } else { p.name.clone() }, p.enabled)).collect();
++    for (id, name, enabled) in snapshot {
++        let mut on = enabled;
++        ui.horizontal(|ui| {
++            if ui.add(egui::Checkbox::new(&mut on, &name)).changed() {
++                if let Some(set) = app.services.plugin_set_enabled.as_ref() {
++                    set(&id, on);
++                }
++                if let Some(at) = app.plugins.plugins.iter().position(|p| p.id == id) {
++                    app.plugins.plugins[at].enabled = on;
++                }
++            }
++            ui.label(egui::RichText::new(id).small().color(t.text_dim));
++        });
++    }
++    ui.separator();
++    ui.add_space(2.0);
++    ui.horizontal(|ui| {
++        if let Some(market) = app.services.host_plugins.as_ref()
++            && ui.button("打开插件市场").clicked()
++        {
++            market();
++        }
++        if let Some(load) = app.services.plugin_load.as_ref()
++            && ui.button("重新加载").clicked()
++        {
++            load();
++        }
++    });
++}
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/mod.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/mod.rs
+new file mode 100644
+index 0000000..b5fbdda
+--- /dev/null
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/mod.rs
+@@ -0,0 +1,57 @@
++//! 内核插件管理器 + 插件 API（cordis 风格）：内核只内置通用注册表、动态面板、
++//! 声明式渲染与管理器 UI；插件本体是宿主层（web）装载的 JS，经 [`crate::Services::plugin_load`]
++//! 装载，注册与运行事件经 [`PluginEvent`] 队列逐帧送回内核（与 `Services::inbox` 同一队列模式）。
++//! 内核 → 插件方向走 [`crate::Services::plugin_invoke`]。
++
++mod manager;
++mod panes;
++mod registry;
++mod render;
++
++pub use panes::{PanelState, Panes};
++pub use registry::{PluginEntry, Registry};
++pub(crate) use manager::show;
++pub(crate) use render::panel_ui;
++
++/// 插件命令声明（帮助菜单出现，`ui.plugin.run` 执行）。
++#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub struct CommandSpec {
++    pub id: String,
++    pub title: String,
++}
++
++/// 插件面板声明（内核以 `Pane::Plugin(handle)` 打开并渲染）。
++#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
++#[serde(rename_all = "camelCase")]
++pub struct PanelSpec {
++    pub id: String,
++    pub title: String,
++    /// 停靠默认宽度；缺省 300。
++    #[serde(default)]
++    pub default_width: Option<f32>,
++}
++
++/// 宿主 → 内核的一条插件事件（队列模式，见模块文档）。
++pub enum PluginEvent {
++    /// 插件运行时已（重新）装载：清空注册表等待重新注册；旧面板句柄作废即关闭。
++    Ready,
++    /// 一个插件声明了它的命令。
++    Commands { plugin: String, commands: Vec<CommandSpec> },
++    /// 一个插件声明了它的面板；句柄由内核分配后回填注册表。
++    Panels { plugin: String, panels: Vec<PanelSpec> },
++    /// 面板状态补丁（浅合并到 per-window 面板状态）；`panel` 是面板 id 字符串，
++    /// 排空时经注册表解析句柄（装载当帧注册表可能尚未建好，晚解析更稳）。
++    PanelState { panel: String, state: serde_json::Value },
++    /// 插件启停确认（宿主写完 installed.json 并重载后回填注册表）。
++    Enabled { id: String, enabled: bool },
++    /// 一次性提示（插件经 `ctx.ui.toast` 请求）。
++    Toast { message: String },
++    /// 一次性弹窗（插件经 `ctx.ui.dialog` 请求），关闭即丢弃。
++    Dialog { title: String, text: String },
++    /// 插件报错。
++    Error { plugin: String, message: String },
++}
++
++/// 事件队列：宿主 push，内核每帧排空（`WordApp::drain_plugins`）。
++pub type PluginEvents = std::sync::Arc<std::sync::Mutex<Vec<PluginEvent>>>;
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs
+new file mode 100644
+index 0000000..43102d1
+--- /dev/null
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs
+@@ -0,0 +1,56 @@
++//! 插件面板的 per-window 运行时状态：每个窗口各自开着哪些插件面板，及其
++//! 声明式状态（插件经 `panel.setState` 浅合并推送）与输入框文字。
++
++use serde_json::Value;
++
++/// 一个打开插件面板的运行时状态。
++#[derive(Clone, Debug, Default)]
++pub struct PanelState {
++    /// 插件推送的声明式状态（消息流、busy、error 等），渲染约定见 `render`。
++    pub state: Value,
++    /// 底部输入框里的文字。
++    pub prompt: String,
++}
++
++/// 一个窗口开着的插件面板：`(面板句柄, 状态)`。
++#[derive(Clone, Debug, Default)]
++pub struct Panes {
++    pub open: Vec<(u16, PanelState)>,
++}
++
++impl Panes {
++    pub fn is_open(&self, handle: u16) -> bool {
++        self.open.iter().any(|(h, _)| *h == handle)
++    }
++
++    pub fn open(&mut self, handle: u16) {
++        if !self.is_open(handle) {
++            self.open.push((handle, PanelState::default()));
++        }
++    }
++
++    pub fn close(&mut self, handle: u16) {
++        self.open.retain(|(h, _)| *h != handle);
++    }
++
++    pub fn get(&self, handle: u16) -> Option<&PanelState> {
++        self.open.iter().find(|(h, _)| *h == handle).map(|(_, s)| s)
++    }
++
++    pub fn get_mut(&mut self, handle: u16) -> Option<&mut PanelState> {
++        self.open.iter_mut().find(|(h, _)| *h == handle).map(|(_, s)| s)
++    }
++
++    /// 浅合并一条状态补丁：两侧都是对象时逐键覆盖，否则整体替换。
++    pub fn apply_state(&mut self, handle: u16, patch: &Value) {
++        let Some(slot) = self.open.iter_mut().find(|(h, _)| *h == handle) else { return };
++        let state = &mut slot.1.state;
++        if let (Some(map), Some(object)) = (state.as_object_mut(), patch.as_object()) {
++            for (k, v) in object {
++                map.insert(k.clone(), v.clone());
++            }
++        } else {
++            *state = patch.clone();
++        }
++    }
++}
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/registry.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/registry.rs
+new file mode 100644
+index 0000000..012ad4b
+--- /dev/null
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/registry.rs
+@@ -0,0 +1,91 @@
++//! App 级插件注册表：装载后的插件条目（命令 + 面板）。面板句柄单调递增不复用，
++//! 插件重载后句柄作废，旧面板随之关闭（预期行为，见方案）。
++
++use super::{CommandSpec, PanelSpec};
++
++/// 一个已注册插件。
++#[derive(Clone, Debug, Default)]
++pub struct PluginEntry {
++    pub id: String,
++    pub name: String,
++    pub enabled: bool,
++    pub commands: Vec<CommandSpec>,
++    /// `(面板句柄, 声明)`；句柄在注册时分配。
++    pub panels: Vec<(u16, PanelSpec)>,
++}
++
++#[derive(Default)]
++pub struct Registry {
++    pub plugins: Vec<PluginEntry>,
++    /// 下一个面板句柄；单调递增，重载不复用。
++    next_handle: u16,
++    /// 插件管理器窗口是否开着（`ui.plugins`）。
++    pub manager_open: bool,
++    /// 待展示的插件弹窗（`ctx.ui.dialog`），关闭即丢弃。
++    pub dialogs: Vec<(String, String)>,
++}
++
++impl Registry {
++    /// 分配一个新面板句柄。
++    fn allocate(&mut self) -> u16 {
++        let h = self.next_handle;
++        self.next_handle = self.next_handle.saturating_add(1);
++        h
++    }
++
++    /// 条目下标，缺失则建一个（`name` 暂用 id）。
++    fn ensure(&mut self, id: &str) -> usize {
++        if let Some(at) = self.plugins.iter().position(|p| p.id == id) {
++            return at;
++        }
++        self.plugins.push(PluginEntry { id: id.to_string(), name: id.to_string(), ..Default::default() });
++        self.plugins.len() - 1
++    }
++
++    /// 重载：清空条目；句柄计数与管理器开合保留。
++    pub fn clear(&mut self) {
++        self.plugins.clear();
++    }
++
++    /// 一个插件声明了它的命令。
++    pub fn set_commands(&mut self, id: &str, commands: Vec<CommandSpec>) {
++        let at = self.ensure(id);
++        self.plugins[at].commands = commands;
++    }
++
++    /// 一个插件声明了它的面板；为每个面板分配句柄（同 id 面板保持原句柄，
++    /// 全量 announce 重复注册时不顶掉已开面板）。
++    pub fn add_panels(&mut self, id: &str, panels: Vec<PanelSpec>) {
++        let at = self.ensure(id);
++        let old = std::mem::take(&mut self.plugins[at].panels);
++        let slots = panels
++            .into_iter()
++            .map(|spec| {
++                let handle = old.iter().find(|(_, s)| s.id == spec.id).map(|(h, _)| *h).unwrap_or_else(|| self.allocate());
++                (handle, spec)
++            })
++            .collect::<Vec<_>>();
++        self.plugins[at].panels = slots;
++    }
++
++    /// 启停确认回填。
++    pub fn set_enabled(&mut self, id: &str, enabled: bool) {
++        let at = self.ensure(id);
++        self.plugins[at].enabled = enabled;
++    }
++
++    /// 句柄 → 面板声明。
++    pub fn panel(&self, handle: u16) -> Option<&PanelSpec> {
++        self.plugins.iter().flat_map(|p| p.panels.iter()).find(|(h, _)| *h == handle).map(|(_, spec)| spec)
++    }
++
++    /// 面板 id → 句柄（`ui.plugin.openPane` 用）。
++    pub fn panel_handle(&self, id: &str) -> Option<u16> {
++        self.plugins.iter().flat_map(|p| p.panels.iter()).find(|(_, spec)| spec.id == id).map(|(h, _)| *h)
++    }
++
++    /// 面板 id → 所属插件 id（`ui.plugin.panelSend` 用）。
++    pub fn panel_plugin(&self, id: &str) -> Option<&str> {
++        self.plugins.iter().find(|p| p.panels.iter().any(|(_, spec)| spec.id == id)).map(|p| p.id.as_str())
++    }
++}
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
+new file mode 100644
+index 0000000..0dc518b
+--- /dev/null
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
+@@ -0,0 +1,89 @@
++//! 通用声明式插件面板渲染：面板内容由插件经 `panel.setState` 推送的 JSON 决定，
++//! 内核约定这几个字段：`messages: [{role, text}]` 消息流；`busy` 生成中（自动重绘）；
++//! `error` 错误提示；`name` 助手名；`placeholder` 输入框提示。消息流为通栏纯文本
++//! （无气泡）；生成中的末条助手消息实时增长并带光标。回车发送，无操作按钮；发送经
++//! `Services::plugin_invoke("panel.send", …)` 交回插件。
++
++use egui::{ScrollArea, Ui};
++use serde_json::Value;
++
++use crate::WordApp;
++use crate::theme::{Tokens, regular};
++
++pub(crate) fn panel_ui(app: &mut WordApp, ui: &mut Ui, handle: u16) {
++    let Some(slot) = app.plugin_panes.get_mut(handle) else {
++        return;
++    };
++    let t = Tokens::get(ui.ctx());
++    let state = slot.state.clone();
++    let messages = state.get("messages").and_then(Value::as_array).cloned().unwrap_or_default();
++    let busy = state.get("busy").and_then(Value::as_bool).unwrap_or(false);
++    let error = state.get("error").and_then(Value::as_str).unwrap_or_default().to_string();
++    let name = state.get("name").and_then(Value::as_str).unwrap_or("助手").to_string();
++    ui.add_space(4.0);
++    let input_height = 46.0;
++    let log_height = (ui.available_height() - input_height).max(60.0);
++    ScrollArea::vertical().auto_shrink([false; 2]).stick_to_bottom(true).max_height(log_height).min_scrolled_height(60.0).show(ui, |ui| {
++        if messages.is_empty() {
++            ui.label(
++                egui::RichText::new("用一句话下指令，回复直接写进文档。")
++                    .font(regular(11.0))
++                    .color(t.text_dim),
++            );
++            return;
++        }
++        let last = messages.len() - 1;
++        for (i, message) in messages.iter().enumerate() {
++            let role = message.get("role").and_then(Value::as_str).unwrap_or("assistant");
++            let text = message.get("text").and_then(Value::as_str).unwrap_or_default();
++            let author = if role == "user" { "你" } else { name.as_str() };
++            ui.label(egui::RichText::new(author).font(regular(10.0)).color(t.text_dim));
++            // 流式末条：空文本先给省略号，有内容后缀光标；其余按原文展示。
++            let streaming = busy && i == last && role != "user";
++            let shown = if streaming {
++                if text.is_empty() { "…".to_string() } else { format!("{text} |") }
++            } else {
++                text.to_string()
++            };
++            if shown.is_empty() {
++                ui.label(egui::RichText::new(" ").font(regular(10.0)));
++            } else {
++                ui.add(egui::Label::new(egui::RichText::new(&shown)).wrap());
++            }
++            ui.add_space(10.0);
++        }
++    });
++    ui.add_space(2.0);
++    ui.separator();
++    ui.add_space(4.0);
++    let placeholder = state.get("placeholder").and_then(Value::as_str).unwrap_or("输入内容发给插件…");
++    let response = ui.add(
++        egui::TextEdit::singleline(&mut slot.prompt)
++            .desired_width(ui.available_width())
++            .char_limit(4000)
++            .hint_text(placeholder),
++    );
++    // 回车发送（无按钮）；发送后保持输入焦点。
++    let enter = response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
++    if enter {
++        response.request_focus();
++    }
++    if enter && !busy && !slot.prompt.trim().is_empty() {
++        // 载荷带面板 id（非句柄），与 `ui.plugin.panelSend`、插件侧约定一致。
++        let panel_id = app.plugins.panel(handle).map(|s| s.id.clone());
++        if let (Some(invoke), Some(panel)) = (app.services.plugin_invoke.as_ref(), panel_id) {
++            invoke("panel.send", serde_json::json!({"panel": panel, "text": slot.prompt.trim()}));
++        }
++        slot.prompt.clear();
++    }
++    // 状态行只放状态词。
++    if busy {
++        ui.add_space(2.0);
++        ui.label(egui::RichText::new("生成中").font(regular(10.0)).color(t.text_dim));
++        ui.ctx().request_repaint_after(std::time::Duration::from_millis(200));
++    }
++    if !error.is_empty() {
++        ui.add_space(4.0);
++        ui.colored_label(ui.visuals().error_fg_color, &error);
++    }
++}
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
+index 7f62a48..752b2e9 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
+@@ -63,7 +63,7 @@ use layout::{columns_items, margins_items, orientation_items};
+ use mailings::mailings;
+ use picture::picture_format;
+ use references::{references, zotero};
+-use review::{developer, help, review};
++use review::{developer, help, plugins, review};
+ #[cfg(test)]
+ pub(crate) use shape::gradient_menu;
+ use shape::shape_format;
+@@ -341,8 +344,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
+         .show(ui, |ui| {
+             // Right-click on the ribbon (outside a button): Customize Ribbon. Registered first, so
+             // the buttons drawn over it keep their own clicks.
+-            // No document open (#1129): every command is greyed out but Help's.
+-            if !app.has_document() && app.ui.tab != "Help" {
++            // No document open (#1129): every command is greyed out but Help's and Plugins'.
++            if !app.has_document() && app.ui.tab != "Help" && app.ui.tab != "Plugins" {
+                 ui.disable();
+             }
+             let bg = ui.interact(ui.max_rect(), ui.scope_id().with("ribbon_background"), Sense::click());
+@@ -392,6 +395,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
+                         "Developer" => developer(app, ui),
+                         "Zotero" => zotero(app, ui),
+                         "Help" => help(app, ui),
++                        "Plugins" => plugins(app, ui),
+                         "Table Design" => table_design(app, ui),
+                         "Table Layout" => table_layout(app, ui),
+                         "Equation" if app.session.math.is_some() => crate::equation_tab::show(app, ui),
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/review.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/review.rs
+index 0252a2d..61837c4 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/review.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/review.rs
+@@ -176,3 +176,27 @@ pub(super) fn help(app: &mut WordApp, ui: &mut Ui) {
+         big(ui, app, "help", "Help", "ui.dialog", json!({"name": "about"}), false);
+     });
+ }
++
++/// 插件页：内核插件运行时（宿主注入 plugin_events）时给「插件管理」+ 各插件命令；
++/// 否则按旧约定把请求交给页面（hostPlugins）。
++pub(super) fn plugins(app: &mut WordApp, ui: &mut Ui) {
++    if app.plugin_events.is_some() {
++        // 先快照命令列表，闭包里只读。
++        let mut commands: Vec<(String, String, String)> = Vec::new();
++        for plugin in app.plugins.plugins.iter().filter(|p| p.enabled) {
++            for command in &plugin.commands {
++                commands.push((plugin.id.clone(), command.id.clone(), command.title.clone()));
++            }
++        }
++        group(ui, "Plugins", None, app, |ui, app| {
++            big(ui, app, "options", "插件管理", "ui.plugins", json!({}), false);
++            for (plugin, id, title) in &commands {
++                big(ui, app, "options", title, "ui.plugin.run", json!({"id": id, "plugin": plugin}), false);
++            }
++        });
++    } else if app.services.host_plugins.is_some() {
++        group(ui, "Plugins", None, app, |ui, app| {
++            big(ui, app, "options", "Plugins", "ui.hostPlugins", json!({}), false);
++        });
++    }
++}
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/tabs.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/tabs.rs
+index b3ec95e..ef856ae 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/tabs.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon/tabs.rs
+@@ -1,6 +1,6 @@
+ use super::{Stroke, Tokens, Ui, WordApp, json, semibold};
+ 
+-pub const TABS: [&str; 13] = wordcraft_engine::ribbon::TABS;
++pub const TABS: [&str; 14] = wordcraft_engine::ribbon::TABS;
+ 
+ /// True when the caret/selection touches a picture (#147).
+ pub fn has_picture_selected(s: &wordcraft_engine::Session) -> bool {
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+index b591fbc..e0ad93d 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+@@ -42,9 +42,19 @@ pub struct Services {
+     /// under its own name and format, as on the desktop, and a Save or Save As that keeps
+     /// everything makes that name the document's file, so the next Save goes to it.
+     pub host_save: Option<HostSaveFn>,
++    /// Web, framed by a page: the user asked for the page's plugin manager (the Help › Plugins
++    /// button, shown only when this is set). The page decides what to open.
++    pub host_plugins: Option<Box<dyn Fn()>>,
++    /// Web: 装载（或重载）全部插件；注册结果经 `WordApp::plugin_events` 队列逐帧送回内核。
++    /// 注入后插件页出现「插件管理」与各插件命令。
++    pub plugin_load: Option<Box<dyn Fn()>>,
++    /// Web: 启停一个插件（宿主写 installed.json 并重载）；确认经 `PluginEvent::Enabled` 回填。
++    pub plugin_set_enabled: Option<Box<dyn Fn(&str, bool)>>,
++    /// 内核 → 插件：命令执行、面板事件（channel, payload JSON），宿主分发给对应插件。
++    pub plugin_invoke: Option<Box<dyn Fn(&str, serde_json::Value)>>,
+     /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
+     /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
+     pub hidden_tabs: Vec<String>,
+     /// Web: told whether the document has unsaved changes after each pass, for the browser's
+     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
+     pub on_dirty: Option<Box<dyn Fn(bool)>>,
+
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
+index 6943dbf..495951b 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
+@@ -23,6 +23,7 @@ pub(crate) struct WindowUi {
+     pub(crate) colors: Option<colors::ColorsDialog>,
+     pub(crate) restrict: dialogs_review::RestrictPane,
+     pub(crate) spelling_review: Option<crate::proofing_pane::SpellingForm>,
++    pub(crate) plugin_panes: crate::plugins::Panes,
+     pub(crate) status_msg: Option<(String, f64)>,
+     pub(crate) previews: previews::Previews,
+     pub(crate) change_picture_target: Option<String>,
+@@ -96,6 +97,7 @@ impl WindowUi {
+             colors: None,
+             restrict: Default::default(),
+             spelling_review: None,
++            plugin_panes: Default::default(),
+             status_msg: None,
+             previews: Default::default(),
+             change_picture_target: None,
+@@ -162,6 +164,8 @@ impl WordApp {
+             // App-wide.
+             session: _,
+             services: _,
++            plugins: _,
++            plugin_events: _,
+             printing: _,
+             print_feedback_seen: _,
+             font_generation: _,
+@@ -223,6 +227,7 @@ impl WordApp {
+             colors,
+             restrict,
+             spelling_review,
++            plugin_panes,
+             status_msg,
+             previews,
+             change_picture_target,
+@@ -321,6 +326,7 @@ impl WordApp {
+             colors,
+             restrict,
+             spelling_review,
++            plugin_panes,
+             status_msg,
+             previews,
+             change_picture_target,
+

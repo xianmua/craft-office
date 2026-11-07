@@ -175,8 +175,11 @@ pub(super) fn help(app: &mut WordApp, ui: &mut Ui) {
     group(ui, "Help", None, app, |ui, app| {
         big(ui, app, "help", "Help", "ui.dialog", json!({"name": "about"}), false);
     });
-    // 插件：内核插件运行时（宿主注入 plugin_events）时给「插件管理」+ 各插件命令；
-    // 否则按旧约定把请求交给页面（hostPlugins）。
+}
+
+/// 插件页：内核插件运行时（宿主注入 plugin_events）时给「插件管理」+ 各插件命令；
+/// 否则按旧约定把请求交给页面（hostPlugins）。
+pub(super) fn plugins(app: &mut WordApp, ui: &mut Ui) {
     if app.plugin_events.is_some() {
         // 先快照命令列表，闭包里只读。
         let mut commands: Vec<(String, String, String)> = Vec::new();

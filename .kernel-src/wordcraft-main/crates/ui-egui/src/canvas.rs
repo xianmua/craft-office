@@ -175,6 +175,8 @@ pub struct CanvasState {
     pub eq_options: Option<EquationFrame>,
     /// Screen rect of the selection's first line, for the floating mini toolbar.
     pub mini_anchor: Option<Rect>,
+    /// egui time until which plugin/control-channel activity keeps the mini toolbar down.
+    pub remote_until: f64,
     /// The selection the mini toolbar was put away for by a click outside the document (the
     /// ribbon, a pane, the status bar); it comes back when the selection changes.
     pub mini_dismissed: Option<wordcraft_engine::Selection>,
@@ -389,6 +391,7 @@ impl Default for CanvasState {
             context_menu_at: None,
             eq_options: None,
             mini_anchor: None,
+            remote_until: 0.0,
             mini_dismissed: None,
             pasted: false,
             v_pressed: false,
@@ -1272,6 +1275,7 @@ fn finish_canvas_frame(finish: CanvasFinish<'_>, out: egui::scroll_area::ScrollA
     crate::mini_toolbar::track_dismissal(app, ui.ctx(), area);
     if let Some(sel) = app.canvas.mini_anchor
         && app.ui.mini_toolbar
+        && !app.remote_active(ui.ctx())
     {
         crate::mini_toolbar::show(app, ui.ctx(), sel, out.inner_rect);
     }
