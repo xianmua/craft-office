@@ -208,17 +208,14 @@ impl WordApp {
             match event {
                 crate::plugins::PluginEvent::Ready => {
                     // 重载换句柄：旧面板全部关闭（预期行为，方案已声明）。
-                    log::warn!("DBG plugins.ready: clear panes");
                     self.plugins.clear();
                     self.plugin_panes = crate::plugins::Panes::default();
                 }
                 crate::plugins::PluginEvent::Commands { plugin, commands } => self.plugins.set_commands(&plugin, commands),
                 crate::plugins::PluginEvent::Panels { plugin, panels } => self.plugins.add_panels(&plugin, panels),
                 crate::plugins::PluginEvent::PanelState { panel, state } => {
-                    log::warn!("DBG panel.state panel={panel} msgs={} handle={:?}", state.get("messages").map(|m| m.as_array().map(|a| a.len()).unwrap_or(0)).unwrap_or(0), self.plugins.panel_handle(&panel));
-                    if let Some(h) = self.plugins.panel_handle(&panel)
-                        && self.plugin_panes.get(h).is_some()
-                    {
+                    // 面板没开也先缓存（panes.apply_state 内部处理），打开时播种续显。
+                    if let Some(h) = self.plugins.panel_handle(&panel) {
                         self.plugin_panes.apply_state(h, &state);
                     }
                     ctx.request_repaint();

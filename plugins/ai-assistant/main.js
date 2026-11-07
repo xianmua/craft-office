@@ -100,7 +100,6 @@ function runCmds(cmds) {
 var hadSelection = false; // 本次回答是否有选区上下文：决定写回是替换还是插入
 
 function handle(text) {
-  console.log('[ai-assistant] handle:', text, 'busy=', busy)
   if (busy) return;
   busy = true;
   state.busy = true;
@@ -150,7 +149,9 @@ function handle(text) {
             : ctx.doc.insert(content);
       // 先写回文本，再按序执行命令（定位由命令自行完成）。
       function finish() {
-        state.messages[live].text = displayText(reply);
+        var shown = displayText(reply);
+        // 纯命令型回复（模型没附正文）给一句完成提示，避免消息空白。
+        state.messages[live].text = shown || (cmds.length ? "已完成文档修改" : shown);
         busy = false;
         state.busy = false;
         render();

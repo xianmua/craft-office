@@ -50,7 +50,7 @@ index 49cb879..ffb706e 100644
      ["Table Design", "Table Layout", "Picture Format", "Shape Format", "Equation", "Chart Design", "SmartArt Design"];
 
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
-index db417f3..7019ba5 100644
+index db417f3..c6cc808 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
 +++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/app.rs
 @@ -39,6 +39,7 @@ impl WordApp {
@@ -79,7 +79,7 @@ index db417f3..7019ba5 100644
          }
      }
  
-@@ -192,6 +197,39 @@ impl WordApp {
+@@ -192,6 +197,38 @@ impl WordApp {
          self
      }
  
@@ -100,9 +100,8 @@ index db417f3..7019ba5 100644
 +                crate::plugins::PluginEvent::Commands { plugin, commands } => self.plugins.set_commands(&plugin, commands),
 +                crate::plugins::PluginEvent::Panels { plugin, panels } => self.plugins.add_panels(&plugin, panels),
 +                crate::plugins::PluginEvent::PanelState { panel, state } => {
-+                    if let Some(h) = self.plugins.panel_handle(&panel)
-+                        && self.plugin_panes.get(h).is_some()
-+                    {
++                    // 面板没开也先缓存（panes.apply_state 内部处理），打开时播种续显。
++                    if let Some(h) = self.plugins.panel_handle(&panel) {
 +                        self.plugin_panes.apply_state(h, &state);
 +                    }
 +                    ctx.request_repaint();
@@ -119,7 +118,7 @@ index db417f3..7019ba5 100644
      /// Start-up with no document to open (#766): show File › Home (Blank document, the templates
      /// and Recent), as Word starts, when the Start screen setting is on (the default). No document
      /// is open until the user picks Blank document or a template or opens a file (#1129): Esc or
-@@ -320,6 +358,7 @@ impl WordApp {
+@@ -320,6 +357,7 @@ impl WordApp {
              self.poll_printing(ctx);
          }
          self.drain_control(ctx);
@@ -614,12 +613,14 @@ index 0000000..b5fbdda
 
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs
 new file mode 100644
-index 0000000..43102d1
+index 0000000..092c943
 --- /dev/null
 +++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/panes.rs
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,72 @@
 +//! 插件面板的 per-window 运行时状态：每个窗口各自开着哪些插件面板，及其
 +//! 声明式状态（插件经 `panel.setState` 浅合并推送）与输入框文字。
++
++use std::collections::HashMap;
 +
 +use serde_json::Value;
 +
@@ -632,10 +633,12 @@ index 0000000..43102d1
 +    pub prompt: String,
 +}
 +
-+/// 一个窗口开着的插件面板：`(面板句柄, 状态)`。
++/// 一个窗口开着的插件面板：`(面板句柄, 状态)`。`last` 缓存各面板最后一次
++/// 推送的状态：面板没开时推送不丢，打开面板时播种续显。
 +#[derive(Clone, Debug, Default)]
 +pub struct Panes {
 +    pub open: Vec<(u16, PanelState)>,
++    pub last: HashMap<u16, Value>,
 +}
 +
 +impl Panes {
@@ -645,11 +648,15 @@ index 0000000..43102d1
 +
 +    pub fn open(&mut self, handle: u16) {
 +        if !self.is_open(handle) {
-+            self.open.push((handle, PanelState::default()));
++            let state = self.last.get(&handle).cloned().unwrap_or_default();
++            self.open.push((handle, PanelState { state, prompt: String::new() }));
 +        }
 +    }
 +
 +    pub fn close(&mut self, handle: u16) {
++        if let Some(slot) = self.open.iter_mut().find(|(h, _)| *h == handle) {
++            self.last.insert(handle, slot.1.state.clone());
++        }
 +        self.open.retain(|(h, _)| *h != handle);
 +    }
 +
@@ -662,15 +669,23 @@ index 0000000..43102d1
 +    }
 +
 +    /// 浅合并一条状态补丁：两侧都是对象时逐键覆盖，否则整体替换。
++    /// 面板没开时补丁进 `last` 缓存，打开时可见。
 +    pub fn apply_state(&mut self, handle: u16, patch: &Value) {
-+        let Some(slot) = self.open.iter_mut().find(|(h, _)| *h == handle) else { return };
-+        let state = &mut slot.1.state;
-+        if let (Some(map), Some(object)) = (state.as_object_mut(), patch.as_object()) {
-+            for (k, v) in object {
-+                map.insert(k.clone(), v.clone());
++        match self.open.iter_mut().find(|(h, _)| *h == handle) {
++            Some(slot) => {
++                let state = &mut slot.1.state;
++                if let (Some(map), Some(object)) = (state.as_object_mut(), patch.as_object()) {
++                    for (k, v) in object {
++                        map.insert(k.clone(), v.clone());
++                    }
++                } else {
++                    *state = patch.clone();
++                }
++                self.last.insert(handle, state.clone());
 +            }
-+        } else {
-+            *state = patch.clone();
++            None => {
++                self.last.insert(handle, patch.clone());
++            }
 +        }
 +    }
 +}
@@ -775,14 +790,15 @@ index 0000000..012ad4b
 
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
 new file mode 100644
-index 0000000..0dc518b
+index 0000000..5bbd16a
 --- /dev/null
 +++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,103 @@
 +//! 通用声明式插件面板渲染：面板内容由插件经 `panel.setState` 推送的 JSON 决定，
 +//! 内核约定这几个字段：`messages: [{role, text}]` 消息流；`busy` 生成中（自动重绘）；
 +//! `error` 错误提示；`name` 助手名；`placeholder` 输入框提示。消息流为通栏纯文本
-+//! （无气泡）；生成中的末条助手消息实时增长并带光标。回车发送，无操作按钮；发送经
++//! （无气泡）；生成中的末条助手消息实时增长并带光标。输入框默认 1 行（回车换行、
++//! 随内容长高），Ctrl+回车或点「发送」提交；发送经
 +//! `Services::plugin_invoke("panel.send", …)` 交回插件。
 +
 +use egui::{ScrollArea, Ui};
@@ -802,12 +818,14 @@ index 0000000..0dc518b
 +    let error = state.get("error").and_then(Value::as_str).unwrap_or_default().to_string();
 +    let name = state.get("name").and_then(Value::as_str).unwrap_or("助手").to_string();
 +    ui.add_space(4.0);
-+    let input_height = 46.0;
++    // 输入区默认 1 行高，随换行自动长高（最多 6 行，再多内部滚动），给消息流让位避免内容被盖住。
++    let rows = (slot.prompt.matches('\n').count() + 1).clamp(1, 6);
++    let input_height = rows as f32 * 15.0 + 16.0;
 +    let log_height = (ui.available_height() - input_height).max(60.0);
 +    ScrollArea::vertical().auto_shrink([false; 2]).stick_to_bottom(true).max_height(log_height).min_scrolled_height(60.0).show(ui, |ui| {
 +        if messages.is_empty() {
 +            ui.label(
-+                egui::RichText::new("用一句话下指令，回复直接写进文档。")
++                egui::RichText::new("用一句话下指令\n回复直接写进文档")
 +                    .font(regular(11.0))
 +                    .color(t.text_dim),
 +            );
@@ -838,18 +856,29 @@ index 0000000..0dc518b
 +    ui.separator();
 +    ui.add_space(4.0);
 +    let placeholder = state.get("placeholder").and_then(Value::as_str).unwrap_or("输入内容发给插件…");
-+    let response = ui.add(
-+        egui::TextEdit::singleline(&mut slot.prompt)
-+            .desired_width(ui.available_width())
-+            .char_limit(4000)
-+            .hint_text(placeholder),
-+    );
-+    // 回车发送（无按钮）；发送后保持输入焦点。
-+    let enter = response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-+    if enter {
-+        response.request_focus();
-+    }
-+    if enter && !busy && !slot.prompt.trim().is_empty() {
++    let mut send = false;
++    ui.horizontal(|ui| {
++        let response = ui.add(
++            egui::TextEdit::multiline(&mut slot.prompt)
++                .desired_width(ui.available_width() - 52.0)
++                .desired_rows(rows)
++                .char_limit(4000)
++                .hint_text(placeholder),
++        );
++        // 回车换行；Ctrl+回车或点「发送」提交，发送后保持输入焦点。
++        send = (response.has_focus()
++            && ui.input(|i| i.key_pressed(egui::Key::Enter) && i.modifiers.command))
++            || ui
++                .add_enabled(
++                    !busy && !slot.prompt.trim().is_empty(),
++                    egui::Button::new("发送"),
++                )
++                .clicked();
++        if send {
++            response.request_focus();
++        }
++    });
++    if send && !busy && !slot.prompt.trim().is_empty() {
 +        // 载荷带面板 id（非句柄），与 `ui.plugin.panelSend`、插件侧约定一致。
 +        let panel_id = app.plugins.panel(handle).map(|s| s.id.clone());
 +        if let (Some(invoke), Some(panel)) = (app.services.plugin_invoke.as_ref(), panel_id) {
@@ -868,7 +897,6 @@ index 0000000..0dc518b
 +        ui.colored_label(ui.visuals().error_fg_color, &error);
 +    }
 +}
-
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
 index 7f62a48..752b2e9 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/ribbon.rs
@@ -952,7 +980,7 @@ diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs b/.kernel
 index b591fbc..e0ad93d 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
 +++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
-@@ -42,9 +42,19 @@ pub struct Services {
+@@ -42,6 +42,16 @@ pub struct Services {
      /// under its own name and format, as on the desktop, and a Save or Save As that keeps
      /// everything makes that name the document's file, so the next Save goes to it.
      pub host_save: Option<HostSaveFn>,
@@ -969,10 +997,6 @@ index b591fbc..e0ad93d 100644
      /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
      /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
      pub hidden_tabs: Vec<String>,
-     /// Web: told whether the document has unsaved changes after each pass, for the browser's
-     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
-     pub on_dirty: Option<Box<dyn Fn(bool)>>,
-
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
 index 6943dbf..495951b 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
