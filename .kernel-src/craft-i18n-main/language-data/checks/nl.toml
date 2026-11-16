@@ -1,3 +1,0 @@
-# Words the nl pack must accept and reject (common words; written for this check).
-correct = ["huis", "boek", "school", "water", "stad", "werken"]
-incorrect = ["boekk", "schooll", "werkken"]

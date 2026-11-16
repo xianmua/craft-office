@@ -1,3 +1,0 @@
-# Words the sr pack must accept and reject (common words; written for this check).
-correct = ["кућа", "књига", "школа", "вода", "град"]
-incorrect = ["књигга", "шкколла", "граддд"]

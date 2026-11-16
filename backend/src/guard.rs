@@ -43,6 +43,7 @@ pub struct UrlGuard {
     allow_scheme: Vec<String>,
     allow_hosts: Vec<(String, Vec<String>)>,
     allow_ports: Vec<u16>,
+    allow_internal: bool,
     deny_nets: Vec<IpNet>,
 }
 
@@ -51,6 +52,7 @@ impl UrlGuard {
         allow_scheme: Vec<String>,
         allow_hosts: Vec<(String, Vec<String>)>,
         allow_ports: Vec<u16>,
+        allow_internal: bool,
     ) -> Self {
         let deny_nets = DENY_NETS
             .iter()
@@ -60,6 +62,7 @@ impl UrlGuard {
             allow_scheme,
             allow_hosts,
             allow_ports,
+            allow_internal,
             deny_nets,
         }
     }
@@ -70,7 +73,12 @@ impl UrlGuard {
             .iter()
             .map(|h| (h.host.to_lowercase(), h.paths.clone()))
             .collect::<Vec<_>>();
-        Self::new(doc.allow_scheme.clone(), hosts, doc.allow_ports.clone())
+        Self::new(
+            doc.allow_scheme.clone(),
+            hosts,
+            doc.allow_ports.clone(),
+            doc.allow_internal,
+        )
     }
 
     /// 第一层：scheme + host + port + path 白名单
@@ -121,7 +129,7 @@ impl UrlGuard {
 
         let mut denied = 0usize;
         for addr in resolved {
-            if self.is_denied(addr.ip()) {
+            if !self.allow_internal && self.is_denied(addr.ip()) {
                 denied += 1;
                 continue;
             }
@@ -159,6 +167,7 @@ mod tests {
                 ("files.example.com".to_string(), vec!["/*".to_string()]),
             ],
             vec![443],
+            false,
         )
     }
 
@@ -281,6 +290,7 @@ mod tests {
             vec!["https".to_string()],
             vec![("files.example.com".to_string(), vec!["/*".to_string()])],
             vec![],
+            false,
         );
         assert!(g.check_static("https://files.example.com:8080/a.docx").is_ok());
         assert!(g.check_static("https://files.example.com/a.docx").is_ok());

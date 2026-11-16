@@ -1,3 +1,0 @@
-# Words the lv pack must accept and reject (common words; written for this check).
-correct = ["māja", "grāmata", "skola", "ūdens", "pilsēta"]
-incorrect = ["grāmatta", "skolla", "pilsētta"]

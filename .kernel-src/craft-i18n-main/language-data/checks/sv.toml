@@ -1,3 +1,0 @@
-# Words the sv pack must accept and reject (common words; written for this check).
-correct = ["hus", "bok", "skola", "vatten", "stad", "arbeta"]
-incorrect = ["bokk", "skolla", "arbetta"]

@@ -456,10 +456,10 @@ import td from 'vite-plugin-tdesign-vue-next'
 export default defineConfig({
   plugins: [vue(), UnoCSS(), td()],
   server: {
-    port: 5173,
+    port: 7777,
     proxy: {
-      '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true },
-      '/artcraft': { target: 'http://127.0.0.1:8080', changeOrigin: true },
+      '/api': { target: 'http://127.0.0.1:7778', changeOrigin: true },
+      '/artcraft': { target: 'http://127.0.0.1:7778', changeOrigin: true },
     },
   },
   build: {

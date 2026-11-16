@@ -13,17 +13,20 @@
  */
 
 import type { DocKind } from '@/composables/useDocSource'
+import { kernelUrl } from '@/api/base'
 
 export type { DocKind }
 
-/** 各格式对应的内核；gridcraft / deckcraft 产物部署后在此扩展（xlsx → gridcraft、pptx → deckcraft） */
+/** 各格式对应的内核：docx→wordcraft、xlsx→gridcraft、pptx→deckcraft */
 export const KERNEL_OF: Partial<Record<DocKind, string>> = {
   docx: 'wordcraft',
+  xlsx: 'gridcraft',
+  pptx: 'deckcraft',
 }
 
 /** 内核 iframe 地址；?host=parent 启用 postMessage 宿主桥 */
 export function kernelFrameUrl(kernel: string): string {
-  return `/${kernel}/index.html?host=parent`
+  return `${kernelUrl(`${kernel}/index.html`)}?host=parent`
 }
 
 export interface KernelSavePayload {
@@ -71,8 +74,8 @@ export function parseKernelMessage(kernel: string, data: unknown): KernelEvent |
 }
 
 /** 宿主 → 内核的 open 消息体（bytes 走结构化克隆，不 transfer，避免源缓冲被 detach） */
-export function openMessage(name: string, bytes: ArrayBuffer): { type: string; name: string; bytes: ArrayBuffer } {
-  return { type: 'wordcraft:open', name, bytes }
+export function openMessage(kernel: string, name: string, bytes: ArrayBuffer): { type: string; name: string; bytes: ArrayBuffer } {
+  return { type: `${kernel}:open`, name, bytes }
 }
 
 /** bytes 字段：ArrayBuffer 或 Uint8Array */

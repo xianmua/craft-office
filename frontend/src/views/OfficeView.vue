@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, nextTick, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, nextTick, ref } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import { ErrorCircleFilledIcon } from "tdesign-icons-vue-next";
 import KernelFrame from "@/components/KernelFrame.vue";
@@ -97,6 +97,7 @@ import { useDocSource, fileNameOf } from "@/composables/useDocSource";
 import { fetchBinary, fetchHealth, fetchMeta } from "@/api/doc";
 import { fetchPlugins } from "@/api/plugins";
 import { KERNEL_OF, type KernelSavePayload } from "@/artcraft/loader";
+import { createHostRelay } from "@/artcraft/hostRelay";
 import { inspectOoxml, type PreviewModel } from "@/artcraft/ooxml";
 
 const { remoteUrl, kind, errorText, parse } = useDocSource();
@@ -112,6 +113,9 @@ const kernelRef = ref<InstanceType<typeof KernelFrame>>();
 
 const marketOpen = ref(false);
 const marketRef = ref<InstanceType<typeof PluginMarket>>();
+
+/** 第三方嵌入中继：被嵌且 ?parentOrigin= 白名单声明时，内核事件向上转发（协议见 hostRelay.ts） */
+const relay = createHostRelay((name, bytes) => kernelRef.value?.openDoc(name, bytes));
 
 const hasUrl = ref(false);
 const linkInput = ref("");
@@ -202,11 +206,18 @@ async function load() {
 }
 
 function onKernelReady() {
+  relay.toParent({ type: "artcraft:ready" });
   if (!binary.value) return;
   kernelRef.value?.openDoc(fileName.value || "document.docx", binary.value);
 }
 
 function onKernelSave(payload: KernelSavePayload) {
+  // 嵌入模式：保存字节转交第三方父页面持久化，不触发本地下载
+  if (relay.active) {
+    relay.toParent({ type: "artcraft:save", name: payload.name, saveAs: payload.saveAs, bytes: payload.bytes });
+    dirty.value = false;
+    return;
+  }
   const blob = new Blob([payload.bytes]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -219,9 +230,11 @@ function onKernelSave(payload: KernelSavePayload) {
 
 function onKernelDirty(value: boolean) {
   dirty.value = value;
+  relay.toParent({ type: "artcraft:dirty", dirty: value });
 }
 
 function onKernelFailed(message: string) {
+  relay.toParent({ type: "artcraft:failed", error: message });
   MessagePlugin.error(`内核启动失败：${message}`);
   if (binary.value) {
     try {
@@ -265,6 +278,8 @@ onMounted(() => {
   if (hasUrl.value && !errorText.value) void load();
   void refreshEnabledPlugins();
 });
+
+onBeforeUnmount(() => relay.dispose());
 </script>
 
 <style scoped>

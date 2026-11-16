@@ -7,17 +7,17 @@
 ## Windows 一键开发（两个终端）
 
 ```powershell
-# 终端 1：后端（默认 0.0.0.0:8080）
+# 终端 1：后端（默认 0.0.0.0:7778）
 cd backend
 cargo run
 
-# 终端 2：前端 dev server（5173，/api 与 /artcraft 代理到 8080）
+# 终端 2：前端 dev server（7777，/api 与 /artcraft 代理到 7778）
 cd frontend
 npm install
 npm run dev
 ```
 
-打开 http://127.0.0.1:5173/office?url=https://calibre-ebook.com/downloads/demos/demo.docx
+打开 http://127.0.0.1:7777/office?url=https://calibre-ebook.com/downloads/demos/demo.docx
 
 ## 生产构建
 
@@ -40,3 +40,28 @@ cargo build --release
 | `scripts\dev-backend.ps1` | 启动后端（可从任意目录执行） |
 | `scripts\dev-frontend.ps1` | 启动前端 dev server |
 | `scripts\build.ps1` | 前端 + 后端全量构建 |
+| `scripts\publish.ps1` | 打部署包（exe + static + plugins + samples + 配置模板 → dist\*.zip） |
+| `scripts\build-web-manual.ps1` | wordcraft wasm 装配部署（trunk 卡死的手动管线） |
+| `scripts\build-deckcraft-web.ps1` | deckcraft wasm 装配部署（同上） |
+
+## 内核源码还原与 wasm 构建
+
+`.kernel-src/` 不入库（体积大），定制改动全部固化为 `patches/` 下的增量补丁。从零还原步骤：
+
+1. 优先解包本地归档（若有）：`.kernel-archives\*.zip` 解压到 `.kernel-src\` 即得含补丁的源码；否则获取上游内核源码压缩包，解压到 `.kernel-src\wordcraft-main`、`.kernel-src\gridcraft-main`、`.kernel-src\deckcraft-main`（wordcraft/gridcraft 还需 `.kernel-src\craft-i18n-main`），再执行第 2 步重放补丁（解包归档的源码已含补丁，跳过）
+2. 重放补丁（在仓库根目录按编号执行）：
+
+   ```powershell
+   git apply patches\deckcraft-0001-host-bridge.patch
+   ```
+
+3. 构建 wasm 并部署到 `backend\static\<kernel>\`：
+
+   ```powershell
+   # wordcraft / gridcraft 需先设置翻译目录，否则界面退化为纯英文
+   $env:CRAFT_I18N_DIR = "D:<你的路径>\craft-office\.kernel-src\craft-i18n-main"
+   cargo build --release -p wordcraft-web --target wasm32-unknown-unknown
+   powershell -File scripts\build-web-manual.ps1        # deckcraft 用 build-deckcraft-web.ps1
+   ```
+
+   gridcraft 暂无独立脚本，复制 `build-deckcraft-web.ps1` 替换内核名/路径即可。

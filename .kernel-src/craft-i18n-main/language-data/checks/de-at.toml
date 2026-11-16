@@ -1,3 +1,0 @@
-# Words the de-at pack must accept and reject (common words; written for this check).
-correct = ["Haus", "Buch", "Schule", "Wasser", "Straße", "Jänner"]
-incorrect = ["Buchh", "Schuule", "Wassser"]

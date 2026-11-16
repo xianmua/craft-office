@@ -36,13 +36,13 @@ cd ..\backend
 cargo run
 ```
 
-打开：<http://127.0.0.1:8080/office?url=https://calibre-ebook.com/downloads/demos/demo.docx>
+打开：<http://127.0.0.1:7778/office?url=https://calibre-ebook.com/downloads/demos/demo.docx>
 
-开发模式（前端热更新，`/api`、`/artcraft` 代理到 8080）：
+开发模式（前端热更新，`/api`、`/artcraft` 代理到 7778）：
 
 ```powershell
 cd backend;  cargo run
-cd frontend; npm run dev      # http://127.0.0.1:5173/office?url=...
+cd frontend; npm run dev      # http://127.0.0.1:7777/office?url=...
 ```
 
 更多：见 [docs/BUILD.md](docs/BUILD.md)；原始设计文档：[docs/ArtCraft在线Office开发文档.md](docs/ArtCraft在线Office开发文档.md)。

@@ -209,6 +209,68 @@ index 5541598..7b72bb4 100644
          if moved(self) {
              return;
 
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/backstage.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/backstage.rs
+index d02022e..24570d4 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/backstage.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/backstage.rs
+@@ -363,6 +363,41 @@ fn matching_templates(query: &str) -> Vec<(&'static str, &'static str)> {
+         .collect()
+ }
+ 
++/// 产品坞：市场里的产品画成一排「插座」卡片——已开通的亮起，未开通的置灰，
++/// 点击提示未开通（占位，未来接购买流程）。目录由宿主每帧同步进 services。
++fn plugin_dock(app: &mut WordApp, ui: &mut Ui) {
++    let catalog = app.services.plugin_catalog.clone();
++    if catalog.is_empty() {
++        return;
++    }
++    let t = Tokens::get(ui.ctx());
++    ui.add_space(24.0);
++    ui.horizontal_wrapped(|ui| {
++        ui.spacing_mut().item_spacing = vec2(18.0, 18.0);
++        for (id, name, enabled) in catalog {
++            let _ = id;
++            let caption = ui.painter().layout_no_wrap(name.clone(), regular(12.5), ui.visuals().text_color());
++            let (card, resp) = ui.allocate_exact_size(vec2(96.0, 72.0 + caption.size().y), Sense::click());
++            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, name.clone()));
++            let r = Rect::from_min_size(card.min, vec2(96.0, 72.0));
++            let (stroke, hole, dot) = if enabled {
++                (Stroke::new(1.5, t.accent), t.accent.gamma_multiply(0.3), t.accent)
++            } else {
++                let dim = t.text_dim.gamma_multiply(0.6);
++                (Stroke::new(1.0, t.border_strong), dim.gamma_multiply(0.4), dim)
++            };
++            ui.painter().rect_filled(r, 4.0, if enabled { t.accent.gamma_multiply(0.06) } else { ui.visuals().faint_bg_color });
++            ui.painter().rect(r, 4.0, egui::Color32::TRANSPARENT, stroke, egui::StrokeKind::Inside);
++            ui.painter().circle_filled(r.center(), 13.0, hole);
++            ui.painter().circle_filled(r.center(), 5.0, dot);
++            ui.painter().galley(pos2(r.min.x, r.max.y), caption, if enabled { ui.visuals().text_color() } else { t.text_dim });
++            if !enabled && resp.clicked() {
++                app.status(format!("{name} 未开通"));
++            }
++        }
++    });
++}
++
+ /// Home: a greeting, Blank plus a short row of templates with a link to New, then Recent.
+ fn home_page(app: &mut WordApp, ui: &mut Ui) {
+     let t = Tokens::get(ui.ctx());
+@@ -388,6 +423,7 @@ fn home_page(app: &mut WordApp, ui: &mut Ui) {
+     if more.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+         app.ui.backstage_page = "new".into();
+     }
++    plugin_dock(app, ui);
+     ui.add_space(24.0);
+     open_list(app, ui);
+ }
+@@ -419,6 +455,7 @@ fn new_page(app: &mut WordApp, ui: &mut Ui) {
+             }
+         });
+     }
++    plugin_dock(app, ui);
+     // Personal: the user templates folder's templates; a folder per category, as in Word.
+     let Some(folder) = folder else { return };
+     if !query.trim().is_empty() && personal_found.is_empty() {
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
 index 1c092e6..3f3a233 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/keytips.rs
@@ -980,7 +1042,7 @@ diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs b/.kernel
 index b591fbc..e0ad93d 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
 +++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
-@@ -42,6 +42,16 @@ pub struct Services {
+@@ -42,9 +42,22 @@ pub struct Services {
      /// under its own name and format, as on the desktop, and a Save or Save As that keeps
      /// everything makes that name the document's file, so the next Save goes to it.
      pub host_save: Option<HostSaveFn>,
@@ -997,6 +1059,12 @@ index b591fbc..e0ad93d 100644
      /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
      /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
      pub hidden_tabs: Vec<String>,
++    /// 新建页产品坞的目录（id, 名称, 是否已开通）：宿主从市场清单算好，每帧同步。
++    /// backstage 画成一排插座卡片，未开通的置灰点击提示。
++    pub plugin_catalog: Vec<(String, String, bool)>,
+     /// Web: told whether the document has unsaved changes after each pass, for the browser's
+     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
+     pub on_dirty: Option<Box<dyn Fn(bool)>>,
 diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs
 index 6943dbf..495951b 100644
 --- a/.kernel-src/wordcraft-main/crates/ui-egui/src/window_ui.rs

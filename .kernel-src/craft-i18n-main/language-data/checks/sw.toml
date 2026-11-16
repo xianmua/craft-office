@@ -1,3 +1,0 @@
-# Words the sw pack must accept and reject (common words; written for this check).
-correct = ["nyumba", "kitabu", "shule", "maji", "mji", "kazi"]
-incorrect = ["nyumbba", "kitabbu", "shulle"]

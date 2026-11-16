@@ -10,8 +10,9 @@ backend/static/
 vendor/artcraft/*.wasm
 vendor/artcraft/*.js
 
-# 内核源码压缩包（源码目录已入库，tar 包冗余）
-.kernel-src/*.tar.gz
+# 内核源码与构建产物（体积大，由 patches/ + BUILD.md 重建步骤还原，本地保留不入库）
+.kernel-src/
+.kernel-archives/
 
 # 验证报告生成物
 scripts/verify-results.json
@@ -22,6 +23,10 @@ backend/data/
 # 环境变量
 .env
 .env.local
+
+# 服务配置（含内网地址等本地联调信息，模板见 config.toml.example）
+backend/config.toml
+.verify-shots/
 
 # 日志与临时文件
 *.log

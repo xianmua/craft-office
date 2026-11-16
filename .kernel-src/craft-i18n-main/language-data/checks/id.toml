@@ -1,3 +1,0 @@
-# Words the id pack must accept and reject (common words; written for this check).
-correct = ["rumah", "buku", "sekolah", "air", "kota", "bekerja"]
-incorrect = ["rumahh", "sekollah", "bekerrja"]

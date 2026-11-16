@@ -29,6 +29,85 @@ function systemPrompt() {
     });
 }
 
+// 命令目录懒加载（wordcraft-cli commands --json 导出，655 条含参数签名）；失败降级为空表。
+var catalogCache = null;
+function catalog() {
+  if (catalogCache !== null) return Promise.resolve(catalogCache);
+  return fetch("/api/plugins/file?id=ai-assistant&file=commands.json")
+    .then(function (r) {
+      if (!r.ok) throw new Error("commands.json 加载失败 HTTP " + r.status);
+      return r.json();
+    })
+    .then(function (j) {
+      catalogCache = Array.isArray(j) ? j : [];
+      return catalogCache;
+    })
+    .catch(function () {
+      catalogCache = [];
+      return [];
+    });
+}
+
+// 中文意图 → 命令 id 关键词：按用户消息命中情况注入对应命令族（id 子串匹配）。
+var INTENTS = [
+  ["表格|单元格|行高|列宽|合并|拆分", "table"],
+  ["图片|照片|图像|截图", "picture"],
+  ["页眉|页脚", "hf header footer"],
+  ["页码", "pageNumber"],
+  ["水印", "watermark"],
+  ["批注|评论|注释", "comment"],
+  ["修订|改痕|痕迹", "trackChanges tracking"],
+  ["脚注|尾注", "footnote endnote citation bibliography"],
+  ["目录", "toc"],
+  ["引用|参考文献|书目", "citation bibliography references"],
+  ["链接|超链接|网址", "link"],
+  ["书签|交叉引用", "bookmark"],
+  ["公式", "equation"],
+  ["图表", "chart"],
+  ["形状|图形", "shape smartArt"],
+  ["艺术字", "wordArt"],
+  ["文本框", "textBox"],
+  ["封面", "coverPage"],
+  ["字体|加粗|斜体|下划线|删除线|字号|颜色", "font format.char format.text"],
+  ["段落|缩进|对齐|行距|间距", "para"],
+  ["项目符号|编号|列表", "bullets numbering list"],
+  ["样式|标题级别", "style para.style outline.level"],
+  ["主题|设计|背景", "design theme"],
+  ["查找|替换", "find replace"],
+  ["撤销|重做", "undo redo"],
+  ["打印|导出|另存为|PDF", "file.print file.export file.save"],
+  ["页面|纸张|边距|横向|竖向|分栏|分页|分节", "layout"],
+  ["选中|选区|选择", "select"],
+  ["视图|缩放|窗口|阅读", "view"],
+  ["审阅|校对|拼写", "review proof"],
+  ["邮件|合并域", "mailings merge"],
+  ["域|日期|时间|自动更新", "fields"],
+  ["绘图|手绘|墨迹", "draw"],
+];
+
+// 按意图从目录挑命令拼成紧凑清单；上限 140 条防 prompt 膨胀。
+function commandRef(text) {
+  if (!catalogCache || !catalogCache.length) return "";
+  var keys = [];
+  INTENTS.forEach(function (row) {
+    if (new RegExp(row[0]).test(text)) keys = keys.concat(row[1].split(" "));
+  });
+  if (!keys.length) return "";
+  var lines = [];
+  for (var i = 0; i < catalogCache.length && lines.length < 140; i++) {
+    var c = catalogCache[i];
+    var id = c.id.toLowerCase();
+    for (var k = 0; k < keys.length; k++) {
+      if (id.indexOf(keys[k].toLowerCase()) >= 0) {
+        lines.push("- " + c.id + " " + String(c.params || "{}").replace(/\s+/g, " ").slice(0, 110) + " // " + c.label);
+        break;
+      }
+    }
+  }
+  if (!lines.length) return "";
+  return "\n\n【本条消息可用命令】仅列与本请求相关的命令，需执行时输出 <cmd>，格式 {\"command\": id, \"params\": {…}}；清单外没有的命令不要编造：\n" + lines.join("\n");
+}
+
 // 全文加 [行号] 前缀（行号=block），供模型按行定位。
 function numberLines(text) {
   return text
@@ -108,7 +187,10 @@ function handle(text) {
   var live = state.messages.push({ role: "assistant", text: "" }) - 1; // 占位助手消息下标，流式更新
   render();
 
-  systemPrompt()
+  catalog()
+    .then(function () {
+      return systemPrompt();
+    })
     .then(function (system) {
       return Promise.all([ctx.doc.getSelectedText(), ctx.doc.getText(), ctx.doc.pages()]).then(
         function (parts) {
@@ -127,7 +209,7 @@ function handle(text) {
               pageMap(parts[2]);
           }
           history.push({ role: "user", content: user });
-          var messages = [{ role: "system", content: system }].concat(history.slice(-8));
+          var messages = [{ role: "system", content: system + commandRef(text) }].concat(history.slice(-8));
           var full = "";
           return ctx.ai.chat(messages, function (delta) {
             full += delta;

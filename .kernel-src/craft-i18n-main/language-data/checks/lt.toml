@@ -1,3 +1,0 @@
-# Words the lt pack must accept and reject (common words; written for this check).
-correct = ["namas", "knyga", "mokykla", "vanduo", "miestas", "dirbti"]
-incorrect = ["knygga", "mokykkla", "miestass"]

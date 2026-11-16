@@ -3,6 +3,8 @@ export interface PluginCatalog {
   installed: Array<{ id: string; enabled: boolean }>
 }
 
+import { apiUrl } from './base'
+
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json()
@@ -14,13 +16,13 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function fetchPlugins(): Promise<PluginCatalog> {
-  const res = await fetch('/api/plugins')
+  const res = await fetch(apiUrl('plugins'))
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as PluginCatalog
 }
 
 async function post(op: 'install' | 'uninstall' | 'enable', body: Record<string, unknown>): Promise<void> {
-  const res = await fetch(`/api/plugins/${op}`, {
+  const res = await fetch(apiUrl(`plugins/${op}`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -41,7 +43,7 @@ export function enablePlugin(id: string, enabled: boolean): Promise<void> {
 }
 
 export async function fetchPluginFile(id: string): Promise<string> {
-  const res = await fetch(`/api/plugins/file?id=${encodeURIComponent(id)}`)
+  const res = await fetch(`${apiUrl('plugins/file')}?id=${encodeURIComponent(id)}`)
   if (!res.ok) throw new Error(await readError(res))
   return res.text()
 }

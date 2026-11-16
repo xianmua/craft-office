@@ -36,6 +36,9 @@ pub struct DocConfig {
     /// 本地示例文档目录（?url=/samples/xxx.docx 直接读这里，不出网）
     #[serde(default = "default_samples_dir")]
     pub samples_dir: String,
+    /// 是否放行解析到内网/保留网段的白名单主机（内网文档服务联调用，默认 false）
+    #[serde(default)]
+    pub allow_internal: bool,
 }
 
 fn default_cache_dir() -> String {

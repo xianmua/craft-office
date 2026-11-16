@@ -46,6 +46,18 @@ export function useDocSource() {
       return false
     }
 
+    // 站内相对路径（如 /samples/demo.docx）：后端代理支持本地文件，直接放行
+    if (raw.startsWith('/')) {
+      const detected = kindOfUrl(raw)
+      if (detected === 'unknown') {
+        errorText.value = `暂不支持的文件类型：.${raw.split('#')[0].split('?')[0].split('.').pop() ?? ''}（当前支持 docx / xlsx / pptx）`
+        return false
+      }
+      remoteUrl.value = raw
+      kind.value = detected
+      return true
+    }
+
     let parsed: URL
     try {
       parsed = new URL(raw)

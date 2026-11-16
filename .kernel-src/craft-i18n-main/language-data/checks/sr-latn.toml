@@ -1,3 +1,0 @@
-# Words the sr-latn pack must accept and reject (common words; written for this check).
-correct = ["kuća", "knjiga", "škola", "voda", "grad"]
-incorrect = ["knjigga", "škkolla", "graddd"]

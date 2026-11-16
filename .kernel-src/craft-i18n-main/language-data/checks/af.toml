@@ -1,3 +1,0 @@
-# Words the af pack must accept and reject (common words; written for this check).
-correct = ["huis", "water", "skool", "boek", "kinders", "werk"]
-incorrect = ["huiss", "skoool", "boekk"]

@@ -1,0 +1,29 @@
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
+index 56c7464..f666040 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/plugins/render.rs
+@@ -23,8 +23,10 @@ pub(crate) fn panel_ui(app: &mut WordApp, ui: &mut Ui, handle: u16) {
+     let name = state.get("name").and_then(Value::as_str).unwrap_or("助手").to_string();
+     ui.add_space(4.0);
+     // 输入区默认 1 行高，随换行自动长高（最多 6 行，再多内部滚动），给消息流让位避免内容被盖住。
++    // 预算 = 每行 15 + TextEdit 内边距 16 + 分隔线组（前后空隙+线高）约 11 + 底部间隙 6，
++    // 少算会整体溢出面板底边，底部间隙落在外面被裁掉。
+     let rows = (slot.prompt.matches('\n').count() + 1).clamp(1, 6);
+-    let input_height = rows as f32 * 15.0 + 16.0;
++    let input_height = rows as f32 * 15.0 + 33.0;
+     let log_height = (ui.available_height() - input_height).max(60.0);
+     ScrollArea::vertical().auto_shrink([false; 2]).stick_to_bottom(true).max_height(log_height).min_scrolled_height(60.0).show(ui, |ui| {
+         if messages.is_empty() {
+diff --git a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+index e0ad93d..bc64e54 100644
+--- a/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
++++ b/.kernel-src/wordcraft-main/crates/ui-egui/src/services.rs
+@@ -55,6 +55,8 @@ pub struct Services {
+     /// 宿主收集的插件声明隐藏 tab（manifest `hideTabs`，内核英文原名如 "Help"）：
+     /// ribbon 不渲染、keytips 不发字母徽章。每帧由宿主同步；File 永不可隐藏。
+     pub hidden_tabs: Vec<String>,
++    /// 产品坞目录（id, 名称, 是否已开通）：新建页画成一排插座卡片。每帧由宿主同步。
++    pub plugin_catalog: Vec<(String, String, bool)>,
+     /// Web: told whether the document has unsaved changes after each pass, for the browser's
+     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
+     pub on_dirty: Option<Box<dyn Fn(bool)>>,

@@ -1,4 +1,4 @@
-# 启动前端 dev server（5173，/api 与 /artcraft 代理到后端）
+# 启动前端 dev server（7777，/api 与 /artcraft 代理到后端）
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath (Join-Path $root 'frontend')

@@ -1,3 +1,0 @@
-# Words the hi pack must accept and reject (common words; written for this check).
-correct = ["घर", "किताब", "पानी", "शहर", "भाषा", "स्कूल"]
-incorrect = ["स्कूलल", "किताबब", "पानीी"]

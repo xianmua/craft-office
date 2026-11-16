@@ -1,3 +1,0 @@
-# Words the cs pack must accept and reject (common words; written for this check).
-correct = ["dům", "kniha", "škola", "voda", "město", "pracovat"]
-incorrect = ["knihha", "škoola", "městto"]

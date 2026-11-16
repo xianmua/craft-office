@@ -72,12 +72,12 @@ function openDoc(name: string, bytes: ArrayBuffer) {
     if (pending.length < 4) pending.push({ name, bytes })
     return
   }
-  frame.value.contentWindow.postMessage(openMessage(name, bytes), location.origin)
+  frame.value.contentWindow.postMessage(openMessage(props.kernel, name, bytes), location.origin)
 }
 
 /** 插件启停/安装/卸载后通知内核重载插件（web/plugins.rs 监听） */
 function notifyPluginsChanged() {
-  frame.value?.contentWindow?.postMessage('wordcraft:pluginsChanged', location.origin)
+  frame.value?.contentWindow?.postMessage(`${props.kernel}:pluginsChanged`, location.origin)
 }
 
 onMounted(() => window.addEventListener('message', onMessage))

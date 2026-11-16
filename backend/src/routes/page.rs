@@ -73,6 +73,23 @@ pub async fn gridcraft_page(
     }
 }
 
+/// deckcraft 产品页：与 wordcraft/gridcraft 同一桥协议，仅前缀不同。
+#[get("/deckcraft")]
+pub async fn deckcraft_page(
+    req: HttpRequest,
+    cfg: web::Data<Arc<AppConfig>>,
+) -> ActixResult<HttpResponse> {
+    let q = web::Query::<ProductQuery>::from_query(req.query_string())
+        .map_err(|e| actix_web::error::ErrorBadRequest(format!("参数解析失败：{e}")))?;
+    match q.url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+        Some(url) => Ok(html_response(product_host_html("deckcraft", url))),
+        None => {
+            let cfg: &Arc<AppConfig> = &cfg;
+            Ok(html_response(index_html(cfg.as_ref()).await?))
+        }
+    }
+}
+
 /// 产品宿主页模板。KERNEL 前缀决定 iframe 路径与桥消息类型。
 fn product_host_html(kernel: &str, url: &str) -> String {
     let kernel_json = serde_json::to_string(kernel).unwrap_or_else(|_| "\"wordcraft\"".into());
