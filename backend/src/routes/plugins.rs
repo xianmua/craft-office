@@ -254,8 +254,8 @@ fn valid_id(id: &str) -> bool {
     !id.is_empty() && !id.contains('/') && !id.contains('\\') && !id.contains("..")
 }
 
-/// 下发插件文件（JS/manifest/agent.md 等），供宿主页面加载；项目级优先。
-/// file= 限插件目录内的单级文件名（白名单后缀），防目录穿越。
+/// 下发插件文件（JS/manifest/agent.md/skills 等），供宿主页面加载；项目级优先。
+/// file= 限插件目录内相对路径（最多 3 段、每段非空，如 skills/word/SKILL.md；白名单后缀），防目录穿越。
 #[get("/api/plugins/file")]
 pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
     let id = q.id.trim();
@@ -274,7 +274,12 @@ pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>
         .and_then(|e| e.to_str())
         .map(|e| ALLOWED.contains(&e))
         .unwrap_or(false);
-    if !ext_ok || name.contains('/') || name.contains('\\') || name.contains("..") {
+    if !ext_ok
+        || name.contains('\\')
+        || name.contains("..")
+        || name.split('/').count() > 3
+        || name.split('/').any(|s| s.is_empty())
+    {
         return Err(ApiError::Internal("非法文件名".to_string()));
     }
     let base = if entry.source == "project" { dev_dir(&cfg) } else { data_dir(&cfg) };

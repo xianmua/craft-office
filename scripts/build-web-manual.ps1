@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $wb = "C:\Users\deren\AppData\Local\trunkrs\trunk\cache\wasm-bindgen-0.2.129\wasm-bindgen.exe"
 $wo = "C:\Users\deren\AppData\Local\trunkrs\trunk\cache\wasm-opt-version_131\bin\wasm-opt.exe"
 $srcWasm = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\target\wasm32-unknown-unknown\release\wordcraft-web.wasm"
+$icoSrc = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\assets\app-icon\wordcraft.ico"
 $dist = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\dist\web"
 $deployTo = "D:\Works\my\craft-office\backend\static\wordcraft"
 $stage = "$env:TEMP\kc-stage"
@@ -32,7 +33,8 @@ New-Item -ItemType Directory $dist -Force | Out-Null
 Copy-Item "$stage\wordcraft-web.js" "$dist\wordcraft-web.js" -Force
 Copy-Item "$stage\wordcraft-web_bg.wasm" "$dist\wordcraft-web_bg.wasm" -Force
 # remove stale trunk-hashed assets and old snippets, then copy fresh ones
-Get-ChildItem $dist -File | Where-Object { $_.Name -match '^wordcraft-web-.+\.js$' -or $_.Name -match '^wordcraft-web-.+_bg\.wasm$' } | Remove-Item -Force
+Get-ChildItem $dist -File | Where-Object { $_.Name -match '^wordcraft-web-.+\.js$' -or $_.Name -match '^wordcraft-web-.+_bg\.wasm$' -or $_.Name -match '^wordcraft-.+\.ico$' } | Remove-Item -Force
+Copy-Item $icoSrc "$dist\wordcraft.ico" -Force
 Remove-Item "$dist\snippets" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$dist\.stage" -Recurse -Force -ErrorAction SilentlyContinue
 if (Test-Path "$stage\snippets") { robocopy "$stage\snippets" "$dist\snippets" /E /NFL /NDL /NJH /NJS | Out-Null }
@@ -45,7 +47,7 @@ function Sri($p) {
 }
 $jsSri = Sri "$dist\wordcraft-web.js"
 $wasmSri = Sri "$dist\wordcraft-web_bg.wasm"
-$icoSri = Sri "$dist\wordcraft-fa59e09a3f921e03.ico"
+$icoSri = Sri "$dist\wordcraft.ico"
 $html = @"
 <!DOCTYPE html>
 <html lang="en">
@@ -65,7 +67,7 @@ $html = @"
       }
     } catch (e) { /* keep auto if localStorage unavailable */ }
   </script>
-  <link rel="icon" href="./wordcraft-fa59e09a3f921e03.ico" integrity="$icoSri"/>
+  <link rel="icon" href="./wordcraft.ico" integrity="$icoSri"/>
   <script type="module">
 import init, * as bindings from './wordcraft-web.js';
 const wasm = await init({ module_or_path: './wordcraft-web_bg.wasm' });

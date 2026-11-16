@@ -1,0 +1,5 @@
+# 本仓库级 cargo 配置：内核构建（.kernel-src/*）拉 git 依赖时强制走系统 git CLI，
+# 配合仓库 local 的 url.insteadOf 重写（ghproxy.net 镜像）绕过 github 直连封锁。
+# 仅对本仓库目录树内生效，不影响全局。
+[net]
+git-fetch-with-cli = true

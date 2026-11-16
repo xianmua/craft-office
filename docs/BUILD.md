@@ -41,8 +41,10 @@ cargo build --release
 | `scripts\dev-frontend.ps1` | 启动前端 dev server |
 | `scripts\build.ps1` | 前端 + 后端全量构建 |
 | `scripts\publish.ps1` | 打部署包（exe + static + plugins + samples + 配置模板 → dist\*.zip） |
+| `scripts\deepseek-mcp.mjs` | DeepSeek ↔ WordCraft MCP 桥（无头文档代理，见下文） |
 | `scripts\build-web-manual.ps1` | wordcraft wasm 装配部署（trunk 卡死的手动管线） |
 | `scripts\build-deckcraft-web.ps1` | deckcraft wasm 装配部署（同上） |
+| `scripts\inject-kernel-page.mjs` | 内核页部署期注入（幂等）：直达链接 `/<kernel>/?url=` 重定向到 /office、gridcraft 默认中文（原 0006 补丁） |
 
 ## 内核源码还原与 wasm 构建
 
@@ -62,6 +64,11 @@ cargo build --release
    $env:CRAFT_I18N_DIR = "D:<你的路径>\craft-office\.kernel-src\craft-i18n-main"
    cargo build --release -p wordcraft-web --target wasm32-unknown-unknown
    powershell -File scripts\build-web-manual.ps1        # deckcraft 用 build-deckcraft-web.ps1
+   node scripts\inject-kernel-page.mjs                  # 任意内核 (重)部署后必跑，补直达链接重定向与 gridcraft 中文默认
    ```
 
    gridcraft 暂无独立脚本，复制 `build-deckcraft-web.ps1` 替换内核名/路径即可。
+
+## DeepSeek MCP 桥（无头文档代理）
+
+内核原生 MCP 服务器 + DeepSeek function calling：`node scripts\deepseek-mcp.mjs "指令"`（单轮）或不带参数进 REPL。模型在 `mcp-workspace\` 内创建/编辑/导出文档（读写沙箱），17 个工具（新建/打开/保存/排版/表格/渲染页图/自检等）。依赖 `vendor\wordcraft-cli\wordcraft-cli.exe`（重建：解包 `.kernel-archives\wordcraft-main.zip` 后 `cargo build --release -p wordcraft-cli`，把 exe 拷入 vendor）与 `backend\.env` 的 DEEPSEEK_* 配置。

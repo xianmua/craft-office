@@ -108,6 +108,29 @@ function commandRef(text) {
   return "\n\n【本条消息可用命令】仅列与本请求相关的命令，需执行时输出 <cmd>，格式 {\"command\": id, \"params\": {…}}；清单外没有的命令不要编造：\n" + lines.join("\n");
 }
 
+// 技能指南：按当前内核加载 skills/<目录>/SKILL.md（wordcraft→word、gridcraft→excel、deckcraft→pptx），
+// 每会话只拉取一次并缓存。excel/pptx 的命令细节待阶段2c 导出命令目录后回填。
+var KERNEL_SKILL = { wordcraft: "word", gridcraft: "excel", deckcraft: "pptx" };
+var skillCache = null;
+function kernelSkill() {
+  if (!skillCache) {
+    var kernel = (location.pathname.match(/wordcraft|gridcraft|deckcraft/) || [])[0] || "wordcraft";
+    skillCache = fetch("/api/plugins/file?id=ai-assistant&file=skills/" + (KERNEL_SKILL[kernel] || "word") + "/SKILL.md")
+      .then(function (r) {
+        return r.ok ? r.text() : null;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+  return skillCache;
+}
+
+// 技能文本包上【技能指南】段引；拉取失败返回空串不阻塞对话。
+function wrapSkill(doc) {
+  return doc ? "\n\n【技能指南】\n\n" + doc : "";
+}
+
 // 全文加 [行号] 前缀（行号=block），供模型按行定位。
 function numberLines(text) {
   return text
@@ -132,8 +155,8 @@ function pageMap(pages) {
 function displayText(reply) {
   return reply
     .replace(/<cmd>[\s\S]*?<\/cmd>/g, "")
-    .replace(/<write>[\s\S]*?<\/write>/g, function (m) {
-      return m.replace(/<\/?write>/g, "").trim();
+    .replace(/<write[^>]*>[\s\S]*?<\/write>/g, function (m) {
+      return m.replace(/<\/?write[^>]*>/g, "").trim();
     })
     .trim();
 }
@@ -142,15 +165,33 @@ function displayText(reply) {
 function displayLive(reply) {
   return reply
     .replace(/<cmd>[\s\S]*?<\/cmd>/g, "")
-    .replace(/<write>/g, "\n")
+    .replace(/<write[^>]*>/g, "\n")
     .replace(/<\/write>/g, "")
     .replace(/<\/?[a-z]*$/, "")
     .trim();
 }
 
 function writeContent(reply) {
-  var m = reply.match(/<write>([\s\S]*?)<\/write>/);
-  return m ? m[1] : null;
+  var m = reply.match(/<write([^>]*)>([\s\S]*?)<\/write>/);
+  if (!m) return null;
+  var page = (m[1].match(/page="(\d+)"/) || [])[1];
+  var pos = (m[1].match(/pos="(start|end)"/) || [])[1] || "start";
+  return { text: m[2], page: page ? parseInt(page, 10) : null, pos: pos };
+}
+
+// 最近一次上下文的分页数据与各行文本：宿主自己算页定位 off，模型不算字符数。
+var lastPages = null;
+var lastBlocks = [];
+
+// <write page pos> → 精确光标 {block, off}；数据缺失或页码越界返回 null。
+function pageTarget(w) {
+  if (!w.page || !lastPages || !Array.isArray(lastPages.first)) return null;
+  var first = lastPages.first;
+  var count = lastPages.count || first.length;
+  if (w.page < 1 || w.page > count) return null;
+  if (w.pos === "start") return { block: first[w.page - 1], off: 0 };
+  var endBlock = w.page < count ? first[w.page] - 1 : lastBlocks.length - 1;
+  return { block: endBlock, off: (lastBlocks[endBlock] || "").length };
 }
 
 // 解析全部 <cmd> 块为按序执行的命令列表。
@@ -189,13 +230,16 @@ function handle(text) {
 
   catalog()
     .then(function () {
-      return systemPrompt();
+      return Promise.all([systemPrompt(), kernelSkill().then(wrapSkill)]);
     })
-    .then(function (system) {
+    .then(function (loaded) {
+      var system = loaded[0];
       return Promise.all([ctx.doc.getSelectedText(), ctx.doc.getText(), ctx.doc.pages()]).then(
         function (parts) {
           var selection = parts[0].trim();
           hadSelection = !!selection;
+          lastPages = parts[2];
+          lastBlocks = parts[1] ? parts[1].split("\n") : [];
           var user = text;
           if (selection) {
             user += "\n\n【参考内容（选区）】\n" + selection.slice(0, 6000);
@@ -209,7 +253,7 @@ function handle(text) {
               pageMap(parts[2]);
           }
           history.push({ role: "user", content: user });
-          var messages = [{ role: "system", content: system + commandRef(text) }].concat(history.slice(-8));
+          var messages = [{ role: "system", content: system + loaded[1] + commandRef(text) }].concat(history.slice(-8));
           var full = "";
           return ctx.ai.chat(messages, function (delta) {
             full += delta;
@@ -221,14 +265,22 @@ function handle(text) {
     })
     .then(function (reply) {
       history.push({ role: "assistant", content: reply });
-      var content = writeContent(reply);
+      var w = writeContent(reply);
       var cmds = parseCmds(reply);
-      var write =
-        content === null
-          ? Promise.resolve()
-          : hadSelection
-            ? ctx.doc.replaceSelected(content)
-            : ctx.doc.insert(content);
+      // 写回：带 page 属性时先由宿主定位光标再插入；选区替换仅限无 page 的普通写回。
+      var write;
+      if (w === null) {
+        write = Promise.resolve();
+      } else if (hadSelection && !w.page) {
+        write = ctx.doc.replaceSelected(w.text);
+      } else {
+        var at = w.page ? pageTarget(w) : null;
+        write = (at ? ctx.doc.execute("caret.set", { pos: at }).catch(function () {}) : Promise.resolve()).then(
+          function () {
+            return ctx.doc.insert(w.text);
+          },
+        );
+      }
       // 先写回文本，再按序执行命令（定位由命令自行完成）。
       function finish() {
         var shown = displayText(reply);

@@ -2,6 +2,7 @@
 node_modules/
 target/
 dist/
+.test-*/
 
 # 前端构建产物（由 npm run build 生成，不入库）
 backend/static/
@@ -9,6 +10,9 @@ backend/static/
 # 内核二进制（体积大，按 vendor/artcraft/README.md 放置）
 vendor/artcraft/*.wasm
 vendor/artcraft/*.js
+# 内核 CLI（部署产物不入库，重建见 docs/BUILD.md）
+vendor/wordcraft-cli/
+mcp-workspace/
 
 # 内核源码与构建产物（体积大，由 patches/ + BUILD.md 重建步骤还原，本地保留不入库）
 .kernel-src/
