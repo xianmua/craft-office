@@ -54,7 +54,7 @@
             class="h-6 px-2 rounded-full border-0 p-0 cursor-pointer text-xs leading-none bg-transparent text-gray-400 hover:text-gray-600 transition-colors"
             title="选择 AI 引擎"
             @click.stop="engineMenu = !engineMenu"
-          >{{ aiEngine === 'deepseek' ? 'LLM' : 'DSH' }} ▾</button>
+            >{{ engineLabel }} ▾</button>
           <!-- 引擎下拉：LLM AI / DSH AI -->
           <div
             v-if="engineMenu"
@@ -94,7 +94,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SidePanel from '@/components/SidePanel.vue'
 import type { AiEngine, ChatMessage } from '@/api/ai'
 import { converse, replySummary, type KernelBridge, type ShellKernel } from '@/artcraft/shellAssistant'
-import { aiEngine, setAiEngine } from '@/artcraft/aiEngine'
+import { aiEngine, aiEngines, ensureEngines, setAiEngine } from '@/artcraft/aiEngine'
 
 const props = defineProps<{ visible: boolean; kernel: ShellKernel; bridge: KernelBridge | null }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'busy', v: boolean): void }>()
@@ -122,11 +122,13 @@ const error = ref('')
 /** busy 同步给竖条呼吸点 */
 watch(busy, (v) => emit('busy', v))
 
-/** 引擎下拉：点外部自动收起 */
-const ENGINE_OPTIONS: Array<{ value: AiEngine; label: string; desc: string }> = [
-  { value: 'deepseek', label: 'LLM AI', desc: 'DeepSeek 直连' },
-  { value: 'dsh', label: 'DSH AI', desc: '本机 DeepSeek Harness' },
-]
+/** 引擎下拉：列表来自后端引擎注册表（内置 + 插件），点外部自动收起 */
+const ENGINE_OPTIONS = computed(() =>
+  aiEngines.value.map((e) => ({ value: e.id, label: e.label, desc: e.desc })),
+)
+const engineLabel = computed(
+  () => aiEngines.value.find((e) => e.id === aiEngine.value)?.label ?? 'LLM',
+)
 const engineMenu = ref(false)
 function pickEngine(v: AiEngine) {
   setAiEngine(v)
@@ -135,7 +137,10 @@ function pickEngine(v: AiEngine) {
 function onDocClick(e: MouseEvent) {
   if (!(e.target as HTMLElement).closest('.engine-dd')) engineMenu.value = false
 }
-onMounted(() => document.addEventListener('click', onDocClick))
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+  void ensureEngines() // 引擎下拉列表（后端注册表）
+})
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 const listRef = ref<HTMLElement>()

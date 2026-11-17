@@ -289,3 +289,34 @@ pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>
     let mime = if name.ends_with(".js") { "text/javascript; charset=utf-8" } else if name.ends_with(".json") { "application/json; charset=utf-8" } else { "text/plain; charset=utf-8" };
     Ok(HttpResponse::Ok().content_type(mime).body(code))
 }
+
+/// 共享技能库（项目根 skills/，与插件解耦，任意 AI 消费方经 GET /api/skills?file=<name>/<file> 引用）。
+/// 校验与 plugin_file 同款：扩展名白名单 + 禁反斜杠/.. + 深度限制，防路径穿越。
+#[derive(Debug, Deserialize)]
+pub struct SkillOp {
+    /// skills/ 目录内相对路径（如 word/SKILL.md）
+    pub file: String,
+}
+
+#[get("/api/skills")]
+pub async fn skill_file(q: web::Query<SkillOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
+    let name = q.file.trim();
+    const ALLOWED: [&str; 2] = ["md", "txt"];
+    let ext_ok = std::path::Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| ALLOWED.contains(&e))
+        .unwrap_or(false);
+    if !ext_ok
+        || name.contains('\\')
+        || name.contains("..")
+        || name.split('/').count() > 3
+        || name.split('/').any(|s| s.is_empty())
+    {
+        return Err(ApiError::Internal("非法技能文件名".to_string()));
+    }
+    let root = Path::new(&cfg.plugins.dev_dir).parent().unwrap_or(Path::new(".")).join("skills");
+    let code = std::fs::read_to_string(root.join(name))
+        .map_err(|e| ApiError::Internal(format!("读取技能 {name} 失败：{e}")))?;
+    Ok(HttpResponse::Ok().content_type("text/plain; charset=utf-8").body(code))
+}

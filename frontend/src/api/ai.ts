@@ -10,8 +10,8 @@ export interface ChatMessage {
 
 import { apiUrl } from './base'
 
-/** AI 引擎：deepseek 直连 / dsh（本机 dsh-apis-plugin，OpenAI 兼容无鉴权端点） */
-export type AiEngine = 'deepseek' | 'dsh'
+/** AI 引擎 id：内置 deepseek + 插件引擎（plugins 目录下 engine.json 声明，如 dsh） */
+export type AiEngine = string
 
 /** 流式对话：onDelta 逐段回调增量正文，onReason 回调推理思考增量（混合推理模型才有）；
  * resolve 为完整回复；signal 用于取消（关闭即取消） */
@@ -74,19 +74,23 @@ export async function chatStream(
   return full
 }
 
-// ===== 设置面板：引擎配置读写（key 只回脱敏掩码）与模型列表 =====
+// ===== 设置面板：引擎配置读写（key 只回脱敏掩码）=====
 
+/** 引擎视图：meta（插件 engine.json 声明）+ 当前配置（未配置时后三项缺省） */
 export interface EngineConfigView {
+  id: AiEngine
+  label: string
+  desc: string
+  keyRequired: boolean
+  defaultBaseUrl: string
+  defaultModel: string
   configured: boolean
   apiKeyMasked?: string
   baseUrl?: string
   model?: string
 }
 
-export interface AiConfigView {
-  deepseek: EngineConfigView
-  dsh: EngineConfigView
-}
+export type AiConfigView = EngineConfigView[]
 
 export async function fetchAiConfig(): Promise<AiConfigView> {
   const res = await fetch(apiUrl('ai/config'))
@@ -115,21 +119,4 @@ export async function updateAiConfig(
     throw new Error(detail)
   }
   return res.json()
-}
-
-/** 拉取该引擎可用模型列表（OpenAI 兼容 /models），供设置面板下拉 */
-export async function fetchAiModels(engine: AiEngine): Promise<string[]> {
-  const res = await fetch(`${apiUrl('ai/models')}?engine=${engine}`)
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`
-    try {
-      const body = await res.json()
-      if (body?.message) detail = body.message
-    } catch {
-      /* 非 JSON 错误体 */
-    }
-    throw new Error(detail)
-  }
-  const body = (await res.json()) as { models: string[] }
-  return body.models ?? []
 }

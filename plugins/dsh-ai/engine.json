@@ -1,0 +1,10 @@
+{
+  "id": "dsh",
+  "label": "DSH AI",
+  "desc": "本机 dsh-apis-plugin，OpenAI 兼容端点",
+  "protocol": "openai",
+  "defaultBaseUrl": "http://127.0.0.1:3088/v1",
+  "defaultModel": "id456/glm-5.3-flash",
+  "keyRequired": false,
+  "envPrefix": "DSH"
+}

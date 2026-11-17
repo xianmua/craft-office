@@ -7,13 +7,14 @@
 #        2) powershell -File scripts\build-web-manual.ps1
 # NOTE: keep this file pure ASCII (PS 5.1 parses BOM-less files as ANSI/GBK).
 $ErrorActionPreference = "Stop"
+$root = Split-Path $PSScriptRoot -Parent
 
-$wb = "C:\Users\deren\AppData\Local\trunkrs\trunk\cache\wasm-bindgen-0.2.129\wasm-bindgen.exe"
-$wo = "C:\Users\deren\AppData\Local\trunkrs\trunk\cache\wasm-opt-version_131\bin\wasm-opt.exe"
-$srcWasm = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\target\wasm32-unknown-unknown\release\wordcraft-web.wasm"
-$icoSrc = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\assets\app-icon\wordcraft.ico"
-$dist = "D:\Works\my\craft-office\.kernel-src\wordcraft-main\dist\web"
-$deployTo = "D:\Works\my\craft-office\backend\static\wordcraft"
+$wb = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-bindgen-0.2.129\wasm-bindgen.exe"
+$wo = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-opt-version_131\bin\wasm-opt.exe"
+$srcWasm = "$root\.kernel-src\wordcraft-main\target\wasm32-unknown-unknown\release\wordcraft-web.wasm"
+$icoSrc = "$root\.kernel-src\wordcraft-main\assets\app-icon\wordcraft.ico"
+$dist = "$root\.kernel-src\wordcraft-main\dist\web"
+$deployTo = "$root\backend\static\wordcraft"
 $stage = "$env:TEMP\kc-stage"
 
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue

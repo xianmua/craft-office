@@ -104,7 +104,7 @@ impl UrlGuard {
         let patterns = self
             .allow_hosts
             .iter()
-            .find(|(h, _)| h.eq_ignore_ascii_case(&host))
+            .find(|(h, _)| h == "*" || h.eq_ignore_ascii_case(&host))
             .map(|(_, p)| p)
             .ok_or_else(|| GuardError::HostNotAllowed(host.clone()))?;
 
@@ -294,6 +294,31 @@ mod tests {
         );
         assert!(g.check_static("https://files.example.com:8080/a.docx").is_ok());
         assert!(g.check_static("https://files.example.com/a.docx").is_ok());
+    }
+
+    #[test]
+    fn wildcard_host_allows_any_host() {
+        let g = UrlGuard::new(
+            vec!["https".to_string()],
+            vec![("*".to_string(), vec!["/*".to_string()])],
+            vec![],
+            false,
+        );
+        for u in [
+            "https://a.example.com/a.docx",
+            "https://b.bucket.tos-cn-guangzhou.volces.com/x/y.xlsx",
+        ] {
+            g.check_static(u).unwrap_or_else(|e| panic!("通配应放行: {u} ({e})"));
+        }
+        // scheme / userinfo 校验不受通配影响
+        assert!(matches!(
+            g.check_static("http://a.example.com/a.docx"),
+            Err(GuardError::BadScheme(_))
+        ));
+        assert!(matches!(
+            g.check_static("https://user@a.example.com/a.docx"),
+            Err(GuardError::BadUrl)
+        ));
     }
 
     #[test]

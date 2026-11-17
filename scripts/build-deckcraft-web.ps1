@@ -6,12 +6,13 @@
 #        2) powershell -File scripts\build-deckcraft-web.ps1
 # NOTE: keep this file pure ASCII (PS 5.1 parses BOM-less files as ANSI/GBK).
 $ErrorActionPreference = "Stop"
+$root = Split-Path $PSScriptRoot -Parent
 
 $wb = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-bindgen-0.2.129\wasm-bindgen.exe"
 $wo = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-opt-version_131\bin\wasm-opt.exe"
-$srcWasm = "D:\Works\my\craft-office\.kernel-src\deckcraft-main\target\wasm32-unknown-unknown\release\deckcraft-web.wasm"
-$dist = "D:\Works\my\craft-office\.kernel-src\deckcraft-main\dist\web"
-$deployTo = "D:\Works\my\craft-office\backend\static\deckcraft"
+$srcWasm = "$root\.kernel-src\deckcraft-main\target\wasm32-unknown-unknown\release\deckcraft-web.wasm"
+$dist = "$root\.kernel-src\deckcraft-main\dist\web"
+$deployTo = "$root\backend\static\deckcraft"
 $stage = "$env:TEMP\dc-stage"
 
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
@@ -34,7 +35,7 @@ Get-ChildItem $dist -File | Where-Object { $_.Name -match '^deckcraft-web-.+\.js
 Remove-Item "$dist\snippets" -Recurse -Force -ErrorAction SilentlyContinue
 if (Test-Path "$stage\snippets") { robocopy "$stage\snippets" "$dist\snippets" /E /NFL /NDL /NJH /NJS | Out-Null }
 # app icon: stable copy from the kernel repo assets
-Copy-Item "D:\Works\my\craft-office\.kernel-src\deckcraft-main\assets\app-icon\deckcraft.ico" "$dist\deckcraft.ico" -Force
+Copy-Item "$root\.kernel-src\deckcraft-main\assets\app-icon\deckcraft.ico" "$dist\deckcraft.ico" -Force
 
 Write-Output "[4/5] write index.html"
 function Sri($p) {

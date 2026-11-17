@@ -1,15 +1,18 @@
 //! AI 对话代理：API key 只存在服务端，前端永远接触不到。
 //! OpenAI 兼容协议（/chat/completions），stream 由请求体决定。
-//! 双引擎：deepseek（直连，需 key）/ dsh（dsh-apis-plugin，本机 3088，
-//! OpenAI 兼容且无鉴权，key 可选；body 带 engine 字段分流）。
+//! 引擎注册表：内置 deepseek + plugins/*/engine.json 声明的插件引擎（如 dsh-ai），
+//! body 带 engine 字段（引擎 id）分流；新增引擎只需加插件目录，无需改后端代码。
 
-use std::sync::RwLock;
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use actix_web::{get, post, put, web, HttpResponse};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 
+use crate::config::AppConfig;
 use crate::error::ApiError;
 
 #[derive(Clone)]
@@ -19,65 +22,142 @@ struct EngineConfig {
     model: String,
 }
 
-#[derive(Clone, Default)]
-struct AiConfig {
-    deepseek: Option<EngineConfig>,
-    dsh: Option<EngineConfig>,
+/// 引擎插件声明（plugins/<dir>/engine.json，camelCase）
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineMeta {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub desc: String,
+    /// 协议族；当前仅支持 openai 兼容
+    #[serde(default = "default_protocol")]
+    pub protocol: String,
+    #[serde(default)]
+    pub default_base_url: String,
+    #[serde(default)]
+    pub default_model: String,
+    #[serde(default)]
+    pub key_required: bool,
+    /// 配置持久化到 .env 的键前缀；缺省 = id 大写
+    #[serde(default)]
+    pub env_prefix: String,
 }
 
-/// 进程内配置缓存（RwLock 支持设置面板热更）；首次访问从环境变量加载。
+fn default_protocol() -> String {
+    "openai".to_string()
+}
+
+impl EngineMeta {
+    fn prefix(&self) -> String {
+        if self.env_prefix.is_empty() {
+            self.id.to_uppercase()
+        } else {
+            self.env_prefix.clone()
+        }
+    }
+}
+
+/// 内置引擎（不依赖插件目录，保证开箱可用）
+fn builtin_engines() -> Vec<EngineMeta> {
+    vec![EngineMeta {
+        id: "deepseek".to_string(),
+        label: "LLM AI".to_string(),
+        desc: "DeepSeek 直连（服务端网关）".to_string(),
+        protocol: "openai".to_string(),
+        default_base_url: "https://api.deepseek.com".to_string(),
+        default_model: "deepseek-chat".to_string(),
+        key_required: true,
+        env_prefix: "DEEPSEEK".to_string(),
+    }]
+}
+
+/// 扫描 <dir>/*/engine.json（无 manifest.json，不会进插件市场列表）
+fn plugin_engines(dev_dir: &str) -> Vec<EngineMeta> {
+    let mut list = Vec::new();
+    let Ok(entries) = std::fs::read_dir(Path::new(dev_dir)) else {
+        return list;
+    };
+    for item in entries.flatten() {
+        let f = item.path().join("engine.json");
+        match std::fs::read_to_string(&f) {
+            Ok(raw) => match serde_json::from_str::<EngineMeta>(&raw) {
+                Ok(m) => list.push(m),
+                Err(e) => eprintln!("[ai] 引擎插件 {} 解析失败：{e}", f.display()),
+            },
+            Err(_) => {} // 非引擎插件目录，跳过
+        }
+    }
+    list
+}
+
+/// 引擎注册表：内置在前，插件引擎同 id 不覆盖内置
+fn registry(cfg: &AppConfig) -> Vec<EngineMeta> {
+    let mut list = builtin_engines();
+    for m in plugin_engines(&cfg.plugins.dev_dir) {
+        if !list.iter().any(|e| e.id == m.id) {
+            list.push(m);
+        }
+    }
+    list
+}
+
+fn find_meta(cfg: &AppConfig, id: &str) -> Option<EngineMeta> {
+    registry(cfg).into_iter().find(|m| m.id == id)
+}
+
+/// 进程内配置缓存（RwLock 支持设置面板热更）；首次访问从环境变量加载全部已注册引擎。
 /// 更新配置 = 重写缓存 + upsert 到 .env（重启后由 dotenvy 读回）。
-static CFG: RwLock<Option<AiConfig>> = RwLock::new(None);
+static CFG: RwLock<Option<HashMap<String, EngineConfig>>> = RwLock::new(None);
 
 /// 从环境变量读引擎配置；key_required=false 的引擎（如 dsh-apis-plugin 无鉴权）key 可缺省
-fn engine_from_env(prefix: &str, default_base: &str, default_model: &str, key_required: bool) -> Option<EngineConfig> {
-    let key = std::env::var(format!("{prefix}_API_KEY")).unwrap_or_default().trim().to_string();
-    if key_required && key.is_empty() {
+fn engine_from_env(meta: &EngineMeta) -> Option<EngineConfig> {
+    let key = std::env::var(format!("{}_API_KEY", meta.prefix()))
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if meta.key_required && key.is_empty() {
         return None;
     }
     Some(EngineConfig {
-        base_url: std::env::var(format!("{prefix}_BASE_URL"))
-            .unwrap_or_else(|_| default_base.to_string())
+        base_url: std::env::var(format!("{}_BASE_URL", meta.prefix()))
+            .unwrap_or_else(|_| meta.default_base_url.clone())
             .trim_end_matches('/')
             .to_string(),
-        model: std::env::var(format!("{prefix}_MODEL")).unwrap_or_else(|_| default_model.to_string()),
+        model: std::env::var(format!("{}_MODEL", meta.prefix()))
+            .unwrap_or_else(|_| meta.default_model.clone()),
         key,
     })
 }
 
-fn config() -> Result<std::sync::RwLockReadGuard<'static, Option<AiConfig>>, ApiError> {
+fn config(cfg: &AppConfig) -> Result<std::sync::RwLockReadGuard<'static, Option<HashMap<String, EngineConfig>>>, ApiError> {
     if CFG.read().unwrap_or_else(|e| e.into_inner()).is_none() {
-        *CFG.write().unwrap_or_else(|e| e.into_inner()) = Some(AiConfig {
-            deepseek: engine_from_env("DEEPSEEK", "https://api.deepseek.com", "deepseek-chat", true),
-            dsh: engine_from_env("DSH", "http://127.0.0.1:3088/v1", "id456/glm-5.3-flash", false),
-        });
+        let map: HashMap<String, EngineConfig> = registry(cfg)
+            .iter()
+            .filter_map(|m| engine_from_env(m).map(|c| (m.id.clone(), c)))
+            .collect();
+        *CFG.write().unwrap_or_else(|e| e.into_inner()) = Some(map);
     }
     Ok(CFG.read().unwrap_or_else(|e| e.into_inner()))
 }
 
-fn engine_cfg<'a>(
-    cfg: &'a AiConfig,
+fn engine_cfg(
+    cfg: &AppConfig,
+    map: &HashMap<String, EngineConfig>,
     engine: Option<&str>,
-) -> Result<(&'a EngineConfig, &'static str), ApiError> {
-    match engine.unwrap_or("deepseek") {
-        "deepseek" => cfg
-            .deepseek
-            .as_ref()
-            .map(|c| (c, "deepseek"))
-            .ok_or_else(|| {
-                ApiError::NotConfigured(
-                    "未配置 DEEPSEEK_API_KEY：复制 backend/.env.example 为 .env 并填入后重启".to_string(),
-                )
-            }),
-        "dsh" => cfg.dsh.as_ref().map(|c| (c, "dsh")).ok_or_else(|| {
-            ApiError::NotConfigured(
-                "DSH 引擎不可用：确认 dsh-apis-plugin 已启用（默认 http://127.0.0.1:3088）".to_string(),
-            )
-        }),
-        other => Err(ApiError::Internal(format!(
-            "未知 engine：{other}（可选 deepseek / dsh）"
-        ))),
-    }
+) -> Result<(EngineConfig, EngineMeta), ApiError> {
+    let id = engine.unwrap_or("deepseek");
+    let meta = find_meta(cfg, id).ok_or_else(|| {
+        ApiError::Internal(format!("未知引擎：{id}（内置 deepseek 或 plugins 目录 engine.json 声明）"))
+    })?;
+    let ec = map.get(id).cloned().ok_or_else(|| {
+        ApiError::NotConfigured(format!(
+            "引擎 {id} 不可用：请在设置面板填写配置（或 backend/.env 配 {}_*）",
+            meta.prefix()
+        ))
+    })?;
+    Ok((ec, meta))
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -93,7 +173,7 @@ pub struct ChatBody {
     pub stream: bool,
     #[serde(default)]
     pub temperature: Option<f32>,
-    /// 引擎分流：deepseek（默认）/ dsh
+    /// 引擎分流：内置 deepseek（默认）/ 插件引擎 id（见 plugins/*/engine.json）
     #[serde(default)]
     pub engine: Option<String>,
 }
@@ -104,14 +184,22 @@ fn default_stream() -> bool {
 
 /// 对话代理：body 原样转发到所选引擎（补全 model），响应按是否流式透传。
 #[post("/api/ai/chat")]
-pub async fn ai_chat(body: web::Json<ChatBody>) -> Result<HttpResponse, ApiError> {
-    let cfg = config()?;
-    let fallback = AiConfig::default();
-    let cfg_ref = cfg.as_ref().unwrap_or(&fallback);
-    let (engine, name) = engine_cfg(cfg_ref, body.engine.as_deref())?;
+pub async fn ai_chat(body: web::Json<ChatBody>, data: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
+    let cfg = config(&data)?;
+    let fallback = HashMap::new();
+    let (engine, meta) = engine_cfg(data.get_ref(), cfg.as_ref().unwrap_or(&fallback), body.engine.as_deref())?;
+    let name = if meta.label.is_empty() { meta.id.clone() } else { meta.label };
 
     if body.messages.is_empty() {
         return Err(ApiError::Internal("messages 不能为空".to_string()));
+    }
+
+    if meta.protocol != "openai" {
+        return Err(ApiError::Internal(format!(
+            "引擎 {id} 协议 {proto} 暂不支持（当前仅 openai 兼容）",
+            id = meta.id,
+            proto = meta.protocol
+        )));
     }
 
     let payload = serde_json::json!({
@@ -168,6 +256,12 @@ pub async fn ai_chat(body: web::Json<ChatBody>) -> Result<HttpResponse, ApiError
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EngineInfo {
+    id: String,
+    label: String,
+    desc: String,
+    key_required: bool,
+    default_base_url: String,
+    default_model: String,
     configured: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     api_key_masked: Option<String>,
@@ -185,31 +279,27 @@ fn mask_key(k: &str) -> String {
     }
 }
 
-fn engine_info(c: Option<&EngineConfig>) -> EngineInfo {
-    match c {
-        Some(c) => EngineInfo {
-            configured: true,
-            // 无鉴权引擎（key 为空）不回掩码
-            api_key_masked: (!c.key.is_empty()).then(|| mask_key(&c.key)),
-            base_url: Some(c.base_url.clone()),
-            model: Some(c.model.clone()),
-        },
-        None => EngineInfo {
-            configured: false,
-            api_key_masked: None,
-            base_url: None,
-            model: None,
-        },
-    }
-}
-
-fn prefix_of(engine: &str) -> Result<&'static str, ApiError> {
-    match engine {
-        "deepseek" => Ok("DEEPSEEK"),
-        "dsh" => Ok("DSH"),
-        other => Err(ApiError::Internal(format!(
-            "未知 engine：{other}（可选 deepseek / dsh）"
-        ))),
+fn engine_info(meta: &EngineMeta, c: Option<&EngineConfig>) -> EngineInfo {
+    let (configured, api_key_masked, base_url, model) = match c {
+        Some(c) => (
+            true,
+            (!c.key.is_empty()).then(|| mask_key(&c.key)), // 无鉴权引擎不回掩码
+            Some(c.base_url.clone()),
+            Some(c.model.clone()),
+        ),
+        None => (false, None, None, None),
+    };
+    EngineInfo {
+        id: meta.id.clone(),
+        label: if meta.label.is_empty() { meta.id.clone() } else { meta.label.clone() },
+        desc: meta.desc.clone(),
+        key_required: meta.key_required,
+        default_base_url: meta.default_base_url.clone(),
+        default_model: meta.default_model.clone(),
+        configured,
+        api_key_masked,
+        base_url,
+        model,
     }
 }
 
@@ -229,16 +319,17 @@ fn persist_env(pairs: &[(&str, String)]) -> Result<(), ApiError> {
         .map_err(|e| ApiError::Internal(format!("写入 .env 失败：{e}")))
 }
 
-/// 配置读取：两个引擎的脱敏视图（key 永不回传明文）
+/// 配置读取：全部已注册引擎的脱敏视图（key 永不回传明文），数组按注册表顺序
 #[get("/api/ai/config")]
-pub async fn ai_config_get() -> Result<HttpResponse, ApiError> {
-    let cfg = config()?;
-    let fallback = AiConfig::default();
-    let cfg_ref = cfg.as_ref().unwrap_or(&fallback);
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "deepseek": engine_info(cfg_ref.deepseek.as_ref()),
-        "dsh": engine_info(cfg_ref.dsh.as_ref()),
-    })))
+pub async fn ai_config_get(data: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
+    let cfg = config(&data)?;
+    let fallback = HashMap::new();
+    let map = cfg.as_ref().unwrap_or(&fallback);
+    let list: Vec<EngineInfo> = registry(data.get_ref())
+        .iter()
+        .map(|m| engine_info(m, map.get(&m.id)))
+        .collect();
+    Ok(HttpResponse::Ok().json(list))
 }
 
 #[derive(Deserialize)]
@@ -254,30 +345,27 @@ pub struct ConfigUpdate {
 
 /// 配置更新：合并进当前引擎配置（key 留空 = 不变），即时生效并持久化 .env
 #[put("/api/ai/config")]
-pub async fn ai_config_put(body: web::Json<ConfigUpdate>) -> Result<HttpResponse, ApiError> {
-    let prefix = prefix_of(&body.engine)?;
-    let (defaults_base, defaults_model, key_required) = match prefix {
-        "DEEPSEEK" => ("https://api.deepseek.com", "deepseek-chat", true),
-        _ => ("http://127.0.0.1:3088/v1", "id456/glm-5.3-flash", false),
-    };
+pub async fn ai_config_put(
+    body: web::Json<ConfigUpdate>,
+    data: web::Data<Arc<AppConfig>>,
+) -> Result<HttpResponse, ApiError> {
+    let meta = find_meta(&data, &body.engine)
+        .ok_or_else(|| ApiError::Internal(format!("未知引擎：{}", body.engine)))?;
+    let prefix = meta.prefix();
 
-    let cfg = config()?;
-    let fallback = AiConfig::default();
-    let cfg_ref = cfg.as_ref().unwrap_or(&fallback);
-    let cur_cfg = match prefix {
-        "DEEPSEEK" => cfg_ref.deepseek.clone(),
-        _ => cfg_ref.dsh.clone(),
-    };
+    let cfg = config(&data)?;
+    let fallback = HashMap::new();
+    let cur_cfg = cfg.as_ref().unwrap_or(&fallback).get(&body.engine).cloned();
     drop(cfg);
 
     let key = match body.api_key.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         Some(k) => k.to_string(),
         None => match cur_cfg.as_ref().map(|c| c.key.clone()) {
             Some(k) => k,
-            None if key_required => {
+            None if meta.key_required => {
                 return Err(ApiError::Internal(format!("{prefix}_API_KEY 尚未配置，请填写 API Key")));
             }
-            None => String::new(), // 无鉴权引擎（dsh-apis-plugin）允许空 key
+            None => String::new(), // 无鉴权引擎允许空 key
         },
     };
     let base_url = body
@@ -287,7 +375,7 @@ pub async fn ai_config_put(body: web::Json<ConfigUpdate>) -> Result<HttpResponse
         .filter(|s| !s.is_empty())
         .map(|s| s.trim_end_matches('/').to_string())
         .or_else(|| cur_cfg.as_ref().map(|c| c.base_url.clone()))
-        .unwrap_or_else(|| defaults_base.to_string());
+        .unwrap_or_else(|| meta.default_base_url.clone());
     let model = body
         .model
         .as_deref()
@@ -295,7 +383,7 @@ pub async fn ai_config_put(body: web::Json<ConfigUpdate>) -> Result<HttpResponse
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .or_else(|| cur_cfg.as_ref().map(|c| c.model.clone()))
-        .unwrap_or_else(|| defaults_model.to_string());
+        .unwrap_or_else(|| meta.default_model.clone());
 
     persist_env(&[
         (&format!("{prefix}_API_KEY"), key.clone()),
@@ -304,66 +392,12 @@ pub async fn ai_config_put(body: web::Json<ConfigUpdate>) -> Result<HttpResponse
     ])?;
 
     let updated = EngineConfig { key, base_url, model };
-    {
-        let mut w = CFG.write().unwrap_or_else(|e| e.into_inner());
-        let cfg = w.get_or_insert_with(Default::default);
-        match prefix {
-            "DEEPSEEK" => cfg.deepseek = Some(updated.clone()),
-            _ => cfg.dsh = Some(updated.clone()),
-        }
-    }
+    CFG.write()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(body.engine.clone(), updated.clone());
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "ok": true, "apiKeyMasked": mask_key(&updated.key), "baseUrl": updated.base_url, "model": updated.model
     })))
-}
-
-/// 可用模型列表：用当前配置调 {base}/models（OpenAI 兼容），供设置面板下拉
-#[get("/api/ai/models")]
-pub async fn ai_models(q: web::Query<std::collections::HashMap<String, String>>) -> Result<HttpResponse, ApiError> {
-    let engine = q.get("engine").map(String::as_str).unwrap_or("deepseek");
-    let cfg = config()?;
-    let fallback = AiConfig::default();
-    let cfg_ref = cfg.as_ref().unwrap_or(&fallback);
-    let (ec, name) = engine_cfg(cfg_ref, Some(engine))?;
-    let ec = ec.clone();
-    drop(cfg);
-
-    let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| ApiError::Internal(format!("构建 HTTP 客户端失败：{e}")))?;
-
-    let mut req = client
-        .get(format!("{}/models", ec.base_url));
-    if !ec.key.is_empty() {
-        req = req.bearer_auth(&ec.key);
-    }
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| ApiError::Upstream(format!("请求 {name} 模型列表失败：{e}")))?;
-
-    if !resp.status().is_success() {
-        let status = resp.status().as_u16();
-        let detail = resp.text().await.unwrap_or_default();
-        let brief: String = detail.chars().take(300).collect();
-        return Err(ApiError::Upstream(format!(
-            "{name} 模型列表返回 HTTP {status}：{brief}"
-        )));
-    }
-
-    let body: serde_json::Value = resp.json().await.map_err(|e| ApiError::Upstream(format!("解析模型列表失败：{e}")))?;
-    let models: Vec<String> = body
-        .get("data")
-        .and_then(|d| d.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|m| m.get("id").and_then(|v| v.as_str()))
-                .map(|s| s.to_string())
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(HttpResponse::Ok().json(serde_json::json!({ "models": models })))
 }

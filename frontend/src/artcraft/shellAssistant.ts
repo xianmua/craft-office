@@ -1,6 +1,6 @@
 /**
  * 外壳插件运行时（阶段 6 gridcraft → 阶段 7 deckcraft/wordcraft）：
- * AI 助手从内核侧迁到 /office Vue 层——提示词/命令目录经 /api/plugins/file 拉取，
+ * AI 助手从内核侧迁到 /office Vue 层——提示词/命令目录经 /api/plugins/file 拉取，技能指南经 /api/skills 拉取（顶层共享 skills/），
  * 文档上下文与命令执行走官方页面命令 API（iframe contentWindow.window.<app>，
  * 经 KernelFrame.call 薄代理）。协议与内核侧插件一致：<cmd>[…]</cmd> 按序执行；
  * wordcraft 另承接 <write> 写回（含 page 定位，原内核插件宿主职责）。
@@ -13,11 +13,11 @@ import { apiUrl, kernelUrl } from '@/api/base'
 /** 内核页面命令 API 桥：见 KernelFrame.call */
 export type KernelBridge = (method: string, ...args: unknown[]) => Promise<unknown>
 
-/** 外壳运行时支持的内核及各自插件文件 */
+/** 外壳运行时支持的内核及各自插件文件（skill 为数组：本内核技能在前，全量注入见 skillGuide） */
 export const SHELL_KERNELS = {
-  wordcraft: { prompt: 'agent.md', skill: 'skills/word/SKILL.md', catalog: 'commands.json' },
-  gridcraft: { prompt: 'agent-excel.md', skill: 'skills/excel/SKILL.md', catalog: 'commands-gridcraft.json' },
-  deckcraft: { prompt: 'agent-pptx.md', skill: 'skills/pptx/SKILL.md', catalog: 'commands-deckcraft.json' },
+  wordcraft: { prompt: 'agent.md', skill: ['word/SKILL.md'], catalog: 'commands.json' },
+  gridcraft: { prompt: 'agent-excel.md', skill: ['excel/SKILL.md'], catalog: 'commands-gridcraft.json' },
+  deckcraft: { prompt: 'agent-pptx.md', skill: ['pptx/SKILL.md'], catalog: 'commands-deckcraft.json' },
 } as const
 
 export type ShellKernel = keyof typeof SHELL_KERNELS
@@ -118,6 +118,14 @@ function pluginFile(file: string): Promise<string> {
   })
 }
 
+/** 共享技能库：顶层 skills/ 目录，与插件解耦，任意 AI 消费方经 GET /api/skills 引用 */
+function skillFile(file: string): Promise<string> {
+  return fetch(`${apiUrl('skills')}?file=${encodeURIComponent(file)}`).then((r) => {
+    if (!r.ok) throw new Error(`技能文件 ${file} 加载失败 HTTP ${r.status}`)
+    return r.text()
+  })
+}
+
 // ---- 懒加载缓存：系统提示词 / 技能指南 / 命令目录（按内核） ----
 
 const promptCache = new Map<ShellKernel, Promise<string>>()
@@ -131,10 +139,14 @@ function systemPrompt(kernel: ShellKernel): Promise<string> {
 }
 
 const skillCache = new Map<ShellKernel, Promise<string>>()
+/** 技能指南：word/excel/pptx 三个 skill 全量注入，当前内核的排最前 */
 function skillGuide(kernel: ShellKernel): Promise<string> {
   let p = skillCache.get(kernel)
   if (!p) {
-    p = pluginFile(SHELL_KERNELS[kernel].skill).catch(() => '')
+    const ordered = [...SHELL_KERNELS[kernel].skill, ...Object.values(SHELL_KERNELS).flatMap((k) => k.skill)]
+    p = Promise.all(
+      ordered.map((f) => skillFile(f).then((t) => `<!-- skill: ${f} -->\n${t}`).catch(() => '')),
+    ).then((parts) => parts.filter(Boolean).join('\n\n'))
     skillCache.set(kernel, p)
   }
   return p
