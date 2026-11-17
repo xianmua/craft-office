@@ -20,6 +20,7 @@ mcp-workspace/
 
 # 验证报告生成物
 scripts/verify-results.json
+.trae/shots/
 
 # 运行时数据（文档缓存等）
 backend/data/

@@ -168,13 +168,9 @@ pub async fn doc_proxy(
     // 本地样例：/samples/xxx 直接读本地目录，不出网、不走白名单
     if q.url.starts_with("/samples/") {
         let (path, ext) = local_sample_path(&cfg, &q.url)?;
-        let name = q.url.trim_start_matches("/samples/");
-        let disposition = if q.download {
-            format!("attachment; filename=\"{name}\"")
-        } else {
-            format!("inline; filename=\"{name}\"")
-        };
-        return file_body_response(&path, mime_of(&ext), &disposition);
+        let name = sanitize_filename(&percent_decode(q.url.trim_start_matches("/samples/")));
+        let kind = if q.download { "attachment" } else { "inline" };
+        return file_body_response(&path, mime_of(&ext), &content_disposition(kind, &name));
     }
 
     let prep = prepare(&cfg, &guard, &q.url, Purpose::Stream).await?;
@@ -182,12 +178,8 @@ pub async fn doc_proxy(
     let ext = detect_ext(prep.target.path());
     let mime = mime_of(&ext);
     let filename = filename_of(&prep.target);
-
-    let disposition = if q.download {
-        format!("attachment; filename=\"{filename}\"")
-    } else {
-        format!("inline; filename=\"{filename}\"")
-    };
+    let kind = if q.download { "attachment" } else { "inline" };
+    let disposition = content_disposition(kind, &filename);
 
     let cache = DocCache::new(&cfg.doc.cache_dir);
     let key = doc_cache::key_of(&q.url, &ext);
@@ -372,6 +364,31 @@ fn mime_of(ext: &str) -> &'static str {
     }
 }
 
+/// 构建 Content-Disposition：ASCII 文件名作回退，非 ASCII 走 RFC 5987
+/// `filename*=UTF-8''` 百分号编码，保证响应头纯 ASCII，下游代理不会因 latin-1 转码失败 500。
+fn content_disposition(kind: &str, filename: &str) -> String {
+    let ascii: String = filename
+        .chars()
+        .map(|c| if c.is_ascii() { c } else { '_' })
+        .collect();
+    let mut value = format!("{kind}; filename=\"{ascii}\"");
+    if !filename.is_ascii() {
+        // RFC 3986 unreserved 字符保持原样，其余按字节百分号编码
+        let encoded: String = filename
+            .bytes()
+            .map(|b| {
+                if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+                    (b as char).to_string()
+                } else {
+                    format!("%{b:02X}")
+                }
+            })
+            .collect();
+        value.push_str(&format!("; filename*=UTF-8''{encoded}"));
+    }
+    value
+}
+
 /// 从 URL 路径取文件名，做最小化清洗（防头注入 / 路径穿越）。
 fn filename_of(u: &Url) -> String {
     let raw = u
@@ -381,7 +398,12 @@ fn filename_of(u: &Url) -> String {
         .unwrap_or("document");
 
     let decoded = percent_decode(raw);
-    let cleaned: String = decoded
+    sanitize_filename(&decoded)
+}
+
+/// 去除可注入头/路径的危险字符，空则回退 document。
+fn sanitize_filename(name: &str) -> String {
+    let cleaned: String = name
         .chars()
         .filter(|c| !matches!(c, '"' | '\\' | '/' | '\r' | '\n' | '\0'))
         .collect();
@@ -423,6 +445,22 @@ mod tests {
             h.insert(*k, HeaderValue::from_static(v));
         }
         h
+    }
+
+    #[test]
+    fn builds_content_disposition() {
+        // 纯 ASCII：不追加 filename*
+        assert_eq!(
+            content_disposition("inline", "a b.docx"),
+            "inline; filename=\"a b.docx\""
+        );
+        // 中文：ASCII 回退 + RFC 5987 编码，头保持纯 ASCII
+        let v = content_disposition("attachment", "折叠.docx");
+        assert_eq!(
+            v,
+            "attachment; filename=\"__.docx\"; filename*=UTF-8''%E6%8A%98%E5%8F%A0.docx"
+        );
+        assert!(v.is_ascii());
     }
 
     #[test]

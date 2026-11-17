@@ -34,9 +34,3 @@ export async function fetchBinary(url: string, signal?: AbortSignal): Promise<Ar
 export function downloadUrl(url: string): string {
   return `${apiUrl('doc/proxy')}?url=${encodeURIComponent(url)}&download=1`
 }
-
-export async function fetchHealth(): Promise<{ editor_kernel_ready: boolean; max_bytes: number }> {
-  const res = await fetch(apiUrl('health'))
-  if (!res.ok) throw new Error(await readError(res))
-  return res.json()
-}

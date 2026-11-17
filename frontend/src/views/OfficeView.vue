@@ -94,7 +94,7 @@ import KernelFrame from "@/components/KernelFrame.vue";
 import FallbackPreview from "@/components/FallbackPreview.vue";
 import PluginMarket from "@/components/PluginMarket.vue";
 import { useDocSource, fileNameOf } from "@/composables/useDocSource";
-import { fetchBinary, fetchHealth, fetchMeta } from "@/api/doc";
+import { fetchBinary, fetchMeta } from "@/api/doc";
 import { fetchPlugins } from "@/api/plugins";
 import { KERNEL_OF, type KernelSavePayload } from "@/artcraft/loader";
 import { createHostRelay } from "@/artcraft/hostRelay";
@@ -184,9 +184,9 @@ async function load() {
 
     const docKind = kind.value === "unknown" ? undefined : kind.value;
     const kernelName = docKind ? KERNEL_OF[docKind] : undefined;
-    const health = await fetchHealth().catch(() => ({ editor_kernel_ready: false, max_bytes: 0 }));
 
-    if (health.editor_kernel_ready && kernelName) {
+    // 不再依赖 /api/health：按扩展名直接进内核模式，内核启动失败由 onKernelFailed 降级预览
+    if (kernelName) {
       // 内核模式：iframe 就绪后由 onKernelReady 投递文档字节
       editorKernel.value = kernelName;
       mode.value = "editor";
