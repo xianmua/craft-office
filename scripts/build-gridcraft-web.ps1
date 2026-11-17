@@ -2,16 +2,19 @@
 # (trunk's asset-copy stage hangs in this environment). Reproduces trunk by hand:
 #   cargo build --release (run separately) -> wasm-bindgen -> wasm-opt -Oz
 #   -> assemble dist/web (stable names, recomputed SRI) -> deploy to backend.
-# Usage: 1) cargo build --release -p gridcraft-web --target wasm32-unknown-unknown
+# Usage: 1) $env:CRAFT_I18N_DIR = "<repo>\.kernel-src\craft-i18n-main"
+#           cargo build --release -p gridcraft-web --target wasm32-unknown-unknown
 #        2) powershell -File scripts\build-gridcraft-web.ps1
+#        3) node scripts\inject-kernel-page.mjs
 # NOTE: keep this file pure ASCII (PS 5.1 parses BOM-less files as ANSI/GBK).
 $ErrorActionPreference = "Stop"
+$root = Split-Path $PSScriptRoot -Parent
 
 $wb = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-bindgen-0.2.129\wasm-bindgen.exe"
 $wo = "$env:LOCALAPPDATA\trunkrs\trunk\cache\wasm-opt-version_131\bin\wasm-opt.exe"
-$srcWasm = "D:\Works\my\craft-office\.kernel-src\gridcraft-main\target\wasm32-unknown-unknown\release\gridcraft-web.wasm"
-$dist = "D:\Works\my\craft-office\.kernel-src\gridcraft-main\dist\web"
-$deployTo = "D:\Works\my\craft-office\backend\static\gridcraft"
+$srcWasm = "$root\.kernel-src\gridcraft-main\target\wasm32-unknown-unknown\release\gridcraft-web.wasm"
+$dist = "$root\.kernel-src\gridcraft-main\dist\web"
+$deployTo = "$root\backend\static\gridcraft"
 $stage = "$env:TEMP\gc-stage"
 
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
@@ -34,7 +37,7 @@ Get-ChildItem $dist -File | Where-Object { $_.Name -match '^gridcraft-web-.+\.js
 Remove-Item "$dist\snippets" -Recurse -Force -ErrorAction SilentlyContinue
 if (Test-Path "$stage\snippets") { robocopy "$stage\snippets" "$dist\snippets" /E /NFL /NDL /NJH /NJS | Out-Null }
 # app icon: stable copy from the kernel repo assets
-Copy-Item "D:\Works\my\craft-office\.kernel-src\gridcraft-main\assets\app-icon\gridcraft.ico" "$dist\gridcraft.ico" -Force
+Copy-Item "$root\.kernel-src\gridcraft-main\assets\app-icon\gridcraft.ico" "$dist\gridcraft.ico" -Force
 
 Write-Output "[4/5] write index.html"
 function Sri($p) {
@@ -63,10 +66,10 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
 
 </script>
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #262626; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f3f3f3; }
     #gridcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #gridcraft_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: #b8b8b8; font: 14px system-ui, sans-serif; pointer-events: none; }
+      color: #555; font: 14px system-ui, sans-serif; pointer-events: none; }
   </style>
 <link rel="modulepreload" href="./gridcraft-web.js" crossorigin="anonymous" integrity="$jsSri"><link rel="preload" href="./gridcraft-web_bg.wasm" crossorigin="anonymous" integrity="$wasmSri" as="fetch" type="application/wasm"></head>
 <body>

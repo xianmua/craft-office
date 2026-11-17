@@ -1,23 +1,30 @@
 ## PPT 技能（DeckCraft）
 
-<!-- 维护注记：具体命令名待阶段2c 导出 deckcraft 命令目录后回填；
-     回填前模型只能使用运行时注入的【本条消息可用命令】清单，不得编造命令。 -->
+命令目录随插件分发（commands-deckcraft.json，383 条），运行时按意图注入【本条消息可用命令】。以下是常用套路速查。
 
 ### 幻灯片定位原则
 
-- 操作前先定位目标页：用户说「第 3 页」「最后一页」时用清单里的页切换/定位命令；没指明页时作用于当前页
-- 新建页属于结构变更，先确认用户要的页数与位置（如「在第 2 页后加一页」）
+- 定位目标页：`slide.go {"index":2}`（0 起）、`slide.next/previous/first/last`
+- 新建页：`slide.new {"layout":"titleAndContent","title":"…","body":"…"}`；版式名以概览里 layouts 为准（title/titleAndContent/sectionHeader/twoContent/comparison/titleOnly/blank 等）
+- 批量建页：`slide.fromOutline {"text":"markdown 大纲","markdown":true}`
+- 结构调整：`slide.duplicate`、`slide.move {"from":1,"to":3}`、`slide.delete`（破坏性，先说明）、`slide.hide`
+- 当前页详情：`slide.inspect {}` 返回逐形状（id/name/text/box），是定位形状的主要依据
 
-### 内容填写
+### 内容与文字
 
-- 一页幻灯片通常有标题占位框与正文占位框：写内容前先定位对应占位框，再写纯文本
-- 多条要点逐条写入，不要把多行挤进一个占位框后假设会自动分条
-- 用户给大纲时按层级映射：一级要点进标题或要点框，二级要点进正文框
+- 改形状文字：`text.set {"id":2,"text":"…"}`（整段替换保留格式）；追加：`text.insert {"text":"…"}`（`\n` 换段）
+- 读形状文字核对：`text.get {"id":2}`
+- 查找替换：`text.find`、`text.replace`
+- 多条要点可一次写入（`\n` 分段），不必逐条；要分开的占位框不要硬塞
 
-### 页面元素
+### 页面元素与样式
 
-- 图片仅当用户消息里带了图片数据（base64）时才可插入；无法凭空生成图片，需要用户提供
-- 形状/文本框等元素插入后不重复插入；用户没给尺寸时用清单命令的默认尺寸
+- 插入：`shape.insert`/`shape.presets`（形状）、`insert.textBox`、`insert.chart {"type":"column","categories":[…],"series":[…]}`、`insert.table`、`insert.slideNumber`、`smartArt.fromText`
+- 图片仅当用户消息带图片数据（base64）时才可插入，无法凭空生成
+- 样式：`shape.fill {"color":"#…"}`、`shape.line`、`format.bold/italic/underline {"on":true}`、`format.font {"family":"…"}`、`shape.quickStyle`、`shape.effects`
+- 几何：`shape.move`（x/y 绝对、dx/dy 相对，单位 pt）、`shape.resize`、`shape.rotate`、`shape.flip`、`arrange.align {"edge":"center"}`、`arrange.distribute`、`arrange.group/ungroup`
+- 选中：`selection.select {"ids":[…]}`；层级：`arrange.bringToFront/sendToBack` 等
+- 动画与切换：`animation.add`/`animation.list`（先查可用效果）、`transition`；演讲者备注：`slide.notes {"text":"…"}`
 
 ### 汇报要求
 

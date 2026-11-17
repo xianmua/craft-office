@@ -67,6 +67,14 @@
         />
         <FallbackPreview v-else-if="preview" :model="preview" />
 
+        <!-- 外壳 AI 助手（wordcraft/gridcraft/deckcraft）：入口为右侧贴边竖条，无悬浮球 -->
+        <AssistantPanel
+          v-if="shellAssistant"
+          v-model:visible="assistantOpen"
+          :kernel="shellKernel"
+          :bridge="assistantBridge"
+        />
+
         <t-dialog
           v-model:visible="linkDialog"
           header="更换文档链接"
@@ -93,6 +101,8 @@ import { ErrorCircleFilledIcon } from "tdesign-icons-vue-next";
 import KernelFrame from "@/components/KernelFrame.vue";
 import FallbackPreview from "@/components/FallbackPreview.vue";
 import PluginMarket from "@/components/PluginMarket.vue";
+import AssistantPanel from "@/components/AssistantPanel.vue";
+import type { KernelBridge, ShellKernel } from "@/artcraft/shellAssistant";
 import { useDocSource, fileNameOf } from "@/composables/useDocSource";
 import { fetchBinary, fetchMeta } from "@/api/doc";
 import { fetchPlugins } from "@/api/plugins";
@@ -133,15 +143,33 @@ async function refreshEnabledPlugins() {
   try {
     const catalog = await fetchPlugins();
     const enabled = new Set(catalog.installed.filter((p) => p.enabled).map((p) => p.id));
+    enabledIds.value = enabled;
     dock.value = catalog.market.map((p) => ({
       id: p.id,
       name: p.name,
       enabled: enabled.has(p.id),
     }));
   } catch {
+    enabledIds.value = new Set();
     dock.value = [];
   }
 }
+
+/** 外壳 AI 助手：三内核统一走外壳运行时（内核侧插件系统已退役） */
+const SHELL_ASSISTANT_KERNELS: ShellKernel[] = ["wordcraft", "gridcraft", "deckcraft"];
+const shellAssistant = computed(
+  () =>
+    SHELL_ASSISTANT_KERNELS.includes(editorKernel.value as ShellKernel) &&
+    enabledIds.value.has("ai-assistant"),
+);
+const shellKernel = computed(() => editorKernel.value as ShellKernel);
+const assistantOpen = ref(false);
+const enabledIds = ref<Set<string>>(new Set());
+
+/** 页面命令 API 桥：转交 KernelFrame（同源 iframe contentWindow.window.<app>） */
+const assistantBridge = computed<KernelBridge | null>(() =>
+  shellAssistant.value ? (method, ...args) => kernelRef.value!.call(method, ...args) : null,
+);
 
 function onSocketClick(item: DockItem) {
   if (!item.enabled) MessagePlugin.warning(`「${item.name}」未开通`);
@@ -155,9 +183,10 @@ function openMarket() {
   void marketRef.value?.refresh();
 }
 
-/** 市场里安装/卸载/启停后：让内核重载插件 */
+/** 市场里安装/卸载/启停后：让内核重载插件，并刷新外壳助手开关 */
 function onPluginsChanged() {
   kernelRef.value?.notifyPluginsChanged();
+  void refreshEnabledPlugins();
 }
 
 async function load() {

@@ -44,30 +44,26 @@ cargo build --release
 | `scripts\deepseek-mcp.mjs` | DeepSeek ↔ WordCraft MCP 桥（无头文档代理，见下文） |
 | `scripts\build-web-manual.ps1` | wordcraft wasm 装配部署（trunk 卡死的手动管线） |
 | `scripts\build-deckcraft-web.ps1` | deckcraft wasm 装配部署（同上） |
+| `scripts\build-gridcraft-web.ps1` | gridcraft wasm 装配部署（同上） |
 | `scripts\inject-kernel-page.mjs` | 内核页部署期注入（幂等）：直达链接 `/<kernel>/?url=` 重定向到 /office、gridcraft 默认中文（原 0006 补丁） |
 
 ## 内核源码还原与 wasm 构建
 
-`.kernel-src/` 不入库（体积大），定制改动全部固化为 `patches/` 下的增量补丁。从零还原步骤：
+`.kernel-src/` 不入库（体积大）。2026-11-17 起三内核均为零补丁快照（wordcraft 升级到含官方页面命令 API 的 main，插件系统由 /office 外壳运行时承接），历史 wordcraft 补丁封存在 `patches/retired/`。从零还原步骤：
 
-1. 优先解包本地归档（若有）：`.kernel-archives\*.zip` 解压到 `.kernel-src\` 即得含补丁的源码；否则获取上游内核源码压缩包，解压到 `.kernel-src\wordcraft-main`、`.kernel-src\gridcraft-main`、`.kernel-src\deckcraft-main`（wordcraft/gridcraft 还需 `.kernel-src\craft-i18n-main`），再执行第 2 步重放补丁（解包归档的源码已含补丁，跳过）
-2. 重放补丁（在仓库根目录按编号执行）：
-
-   ```powershell
-   git apply patches\deckcraft-0001-host-bridge.patch
-   ```
-
-3. 构建 wasm 并部署到 `backend\static\<kernel>\`：
+1. 解包归档：`.kernel-archives\*.zip` 解压到 `.kernel-src\` 即得源码（wordcraft/gridcraft 还需 `.kernel-src\craft-i18n-main`）。
+   - 注意：wordcraft-main.zip 是旧快照（不含页面命令 API）；新快照从 GitHub 重新获取（wordcraft 新快照的 craft-libs 依赖 rev 较多，cargo 需联网拉取 git 依赖）。
+2. 构建 wasm 并部署到 `backend\static\<kernel>\`：
 
    ```powershell
    # wordcraft / gridcraft 需先设置翻译目录，否则界面退化为纯英文
    $env:CRAFT_I18N_DIR = "D:<你的路径>\craft-office\.kernel-src\craft-i18n-main"
-   cargo build --release -p wordcraft-web --target wasm32-unknown-unknown
-   powershell -File scripts\build-web-manual.ps1        # deckcraft 用 build-deckcraft-web.ps1
+   cargo build --release -p wordcraft-web --target wasm32-unknown-unknown   # 在 .kernel-src\wordcraft-main 下
+   powershell -File scripts\build-web-manual.ps1        # gridcraft 用 build-gridcraft-web.ps1，deckcraft 用 build-deckcraft-web.ps1
    node scripts\inject-kernel-page.mjs                  # 任意内核 (重)部署后必跑，补直达链接重定向与 gridcraft 中文默认
    ```
 
-   gridcraft 暂无独立脚本，复制 `build-deckcraft-web.ps1` 替换内核名/路径即可。
+3. wordcraft 依赖 craft-libs 的多个 git rev；github.com 主站被墙时 codeload.github.com 通常仍可用，可手动 `git fetch https://github.com/storytold/craft-libs <rev>:refs/commit/<rev>` 重试补齐缺失 rev 后再构建。
 
 ## DeepSeek MCP 桥（无头文档代理）
 

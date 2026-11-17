@@ -1,0 +1,2865 @@
+[
+  {
+    "id": "file.new",
+    "label": "New Workbook",
+    "location": "File",
+    "params": "{sample?: \"budget\"|\"sales\"|\"grades\"}",
+    "shortcut": "Cmd+N"
+  },
+  {
+    "id": "file.open",
+    "label": "Open…",
+    "location": "File",
+    "params": "{path} | {name, base64}, plus {password} for a password-protected workbook and {csvAsText?: bool} to keep every csv/tsv/txt field as text, with no number or date conversion (xlsx, xlsm, xls import, xlsb and ods data import, csv, tsv, txt, json)",
+    "shortcut": "Cmd+O"
+  },
+  {
+    "id": "file.save",
+    "label": "Save",
+    "location": "File",
+    "params": "{path?} (xlsx by default; .csv/.tsv/.json/.html/.pdf by extension)",
+    "shortcut": "Cmd+S"
+  },
+  {
+    "id": "file.saveAs",
+    "label": "Save As…",
+    "location": "File",
+    "params": "{path} (.xlsx, .csv, .tsv, .json, .html, or .pdf: a PDF of the active sheet)",
+    "shortcut": "Cmd+Shift+S"
+  },
+  {
+    "id": "file.saveBytes",
+    "label": "Encode Workbook",
+    "location": "",
+    "params": "{format?: xlsx|csv|tsv|json|html} → {base64}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.close",
+    "label": "Close",
+    "location": "File",
+    "params": "{force?: bool, document?: bool} (closes the active window, or with `document` the workbook and all its windows; the workbook closes with its last window)",
+    "shortcut": "Cmd+W"
+  },
+  {
+    "id": "file.exportCsv",
+    "label": "Export as CSV",
+    "location": "File > Export",
+    "params": "{path, sheet?, values?: bool} → {path, bytes}: writes the cells as displayed, like Excel's Save As CSV; `values: true` writes raw values instead (full-precision numbers, ISO 8601 dates and times, TRUE/FALSE)",
+    "shortcut": ""
+  },
+  {
+    "id": "file.exportHtml",
+    "label": "Save as Web Page",
+    "location": "File > Export",
+    "params": "{path}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.properties",
+    "label": "Properties",
+    "location": "File",
+    "params": "{title?, subject?, author?, company?, keywords?, description?}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.options",
+    "label": "Options",
+    "location": "File",
+    "params": "{} → {calculation: {mode, iterative, maxIterations, maxChange, precisionAsDisplayed}} for the active workbook (the interface opens File › Options; change settings with their own commands, e.g. formulas.calculationOptions, view.theme, app.language.set)",
+    "shortcut": ""
+  },
+  {
+    "id": "window.activate",
+    "label": "Switch Window",
+    "location": "Window",
+    "params": "{window} | {doc} | {index} (a window id, a workbook id, or the workbook's position in the list)",
+    "shortcut": ""
+  },
+  {
+    "id": "window.close",
+    "label": "Close Window",
+    "location": "Window",
+    "params": "{window?, doc?, force?: bool} → {closed, document}: closes a window (the active one by default); its workbook closes with its last window, asking first when it has unsaved changes unless `force`",
+    "shortcut": ""
+  },
+  {
+    "id": "window.list",
+    "label": "Windows",
+    "location": "Window",
+    "params": "{} → [{window, doc, index, title, dirty, active, hidden}]",
+    "shortcut": ""
+  },
+  {
+    "id": "cell.set",
+    "label": "Enter Cell",
+    "location": "",
+    "params": "{cell?: \"B2\", input: \"text, number or =formula\", sheet?, array?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "range.setValues",
+    "label": "Set Values",
+    "location": "",
+    "params": "{range?: \"A1\", values: [[...]] (rows of numbers/strings/bools/null; strings starting with = are formulas), parse?: bool (default true: a string goes through typed input, so \"05.04.2026\" becomes a date and \"2.500\" a number, by en-US rules; false stores every other string as the text it is, so a dd.mm.yyyy date or a thousands separator survives, a leading ' is kept and an empty string clears the cell)} → {cells, convertedCount, converted: [{cell, input, stored}] (up to 20 of the strings typed input read as a number, date, time, boolean or error, so a script can notice)}",
+    "shortcut": ""
+  },
+  {
+    "id": "range.fill",
+    "label": "Fill Range With Input",
+    "location": "",
+    "params": "{range?, input}: enters the same input in every selected cell (relative formulas adjust)",
+    "shortcut": "Ctrl+Enter"
+  },
+  {
+    "id": "selection.set",
+    "label": "Select",
+    "location": "",
+    "params": "{range: \"A1:B2,D4\" | cell, active?: \"A1\", sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.move",
+    "label": "Move Selection",
+    "location": "",
+    "params": "{dr, dc, extend?: bool, jump?: bool (Ctrl+arrow), page?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.next",
+    "label": "Next Cell in Selection",
+    "location": "",
+    "params": "{forward?: true, byRow?: false} (Enter/Tab inside a selection)",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.nextCorner",
+    "label": "Next Corner of Selection",
+    "location": "",
+    "params": "{} (the active cell moves clockwise to the next corner of the selected area, which stays selected)",
+    "shortcut": "Ctrl+."
+  },
+  {
+    "id": "edit.selectAll",
+    "label": "Select All",
+    "location": "Edit",
+    "params": "{} (current region first, then the whole sheet)",
+    "shortcut": "Cmd+A"
+  },
+  {
+    "id": "selection.currentRegion",
+    "label": "Select Current Region",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Ctrl+Shift+8"
+  },
+  {
+    "id": "selection.row",
+    "label": "Select Entire Row",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Shift+Space"
+  },
+  {
+    "id": "selection.column",
+    "label": "Select Entire Column",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Ctrl+Space"
+  },
+  {
+    "id": "edit.goTo",
+    "label": "Go To…",
+    "location": "Home > Editing > Find & Select",
+    "params": "{reference: \"B5\" | \"Sheet2!A1:C3\" | name | \"Sheet2!Name\" | \"B14:C22,F19:G30\" | \"Price, Type\", record?: bool} (record: keep a reference without names among the recent ones) or {list: true} → {names, recent}",
+    "shortcut": "Ctrl+G"
+  },
+  {
+    "id": "edit.goToSpecial",
+    "label": "Go To Special…",
+    "location": "Home > Editing > Find & Select",
+    "params": "{kind: blanks|constants|formulas|comments|lastCell|currentRegion|visible|conditionalFormats|dataValidation|errors|numbers|text}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.undo",
+    "label": "Undo",
+    "location": "Edit",
+    "params": "{steps?: 1}",
+    "shortcut": "Cmd+Z"
+  },
+  {
+    "id": "edit.redo",
+    "label": "Redo",
+    "location": "Edit",
+    "params": "{steps?: 1}",
+    "shortcut": "Cmd+Y"
+  },
+  {
+    "id": "edit.copy",
+    "label": "Copy",
+    "location": "Home > Clipboard",
+    "params": "{range?, html?: bool} → {range, text, html?} (html: a styled HTML table, only when requested and small enough)",
+    "shortcut": "Cmd+C"
+  },
+  {
+    "id": "edit.cut",
+    "label": "Cut",
+    "location": "Home > Clipboard",
+    "params": "{range?, html?: bool} → {range, text, html?} (html: a styled HTML table, only when requested and small enough)",
+    "shortcut": "Cmd+X"
+  },
+  {
+    "id": "edit.paste",
+    "label": "Paste",
+    "location": "Home > Clipboard",
+    "params": "{at?: \"C3\", text?: \"tab-separated text from the system clipboard\", html?: \"the clipboard's HTML flavour; cells the source recorded as numbers (x:num, sdval) stay numbers\"}",
+    "shortcut": "Cmd+V"
+  },
+  {
+    "id": "range.move",
+    "label": "Drag and Drop",
+    "location": "",
+    "params": "{range?, to: \"C3\", overwrite?: bool} (drag the selection's border: a cut and paste that asks before replacing data unless overwrite)",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.pasteSpecial",
+    "label": "Paste Special…",
+    "location": "Home > Clipboard",
+    "params": "{what: all|formulas|values|formats|comments|validation|allExceptBorders|columnWidths|formulasAndNumberFormats|valuesAndNumberFormats, operation?: none|add|subtract|multiply|divide, skipBlanks?, transpose?, link?}",
+    "shortcut": "Ctrl+Alt+V"
+  },
+  {
+    "id": "edit.clearClipboard",
+    "label": "Cancel Copy",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Escape"
+  },
+  {
+    "id": "edit.clearAll",
+    "label": "Clear All",
+    "location": "Home > Editing > Clear",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.clearFormats",
+    "label": "Clear Formats",
+    "location": "Home > Editing > Clear",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.clearContents",
+    "label": "Clear Contents",
+    "location": "Home > Editing > Clear",
+    "params": "{range?}",
+    "shortcut": "Delete"
+  },
+  {
+    "id": "edit.clearComments",
+    "label": "Clear Comments and Notes",
+    "location": "Home > Editing > Clear",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.clearHyperlinks",
+    "label": "Clear Hyperlinks",
+    "location": "Home > Editing > Clear",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.fillDown",
+    "label": "Fill Down",
+    "location": "Home > Editing > Fill",
+    "params": "{range?}",
+    "shortcut": "Cmd+D"
+  },
+  {
+    "id": "edit.fillRight",
+    "label": "Fill Right",
+    "location": "Home > Editing > Fill",
+    "params": "{range?}",
+    "shortcut": "Cmd+R"
+  },
+  {
+    "id": "edit.fillUp",
+    "label": "Fill Up",
+    "location": "Home > Editing > Fill",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.fillLeft",
+    "label": "Fill Left",
+    "location": "Home > Editing > Fill",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.autoFill",
+    "label": "AutoFill",
+    "location": "",
+    "params": "{source: \"A1:A2\", target: \"A1:A10\", mode?: series|alternate|copy|formats|values|extend|days|weekdays|months|years}: the fill-handle drag (alternate = Ctrl+drag: a lone number counts up, any other series copies; values = Fill Without Formatting: the series, targets keep their formats; extend = Fill Series: the series, and a lone number counts up; days, weekdays, months, years = Fill Days, Fill Weekdays, Fill Months, Fill Years: dates step by one unit, or by the difference between the first two dates in that unit, and weekdays skip Saturday and Sunday)",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.fillSeries",
+    "label": "Series…",
+    "location": "Home > Editing > Fill",
+    "params": "{range?, direction?: columns|rows, type?: linear|growth|date|autofill, step?: 1, stop?, dateUnit?: day|weekday|month|year}",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.flashFill",
+    "label": "Flash Fill",
+    "location": "Home > Editing > Fill",
+    "params": "{range?}",
+    "shortcut": "Ctrl+E"
+  },
+  {
+    "id": "edit.find",
+    "label": "Find…",
+    "location": "Home > Editing > Find & Select",
+    "params": "{what, matchCase?, wholeCell?, lookIn?: formulas|values, byColumns?, all?: bool, within?: sheet|workbook|selection} (selection: only the selected cells; Find Next keeps them selected and moves the active cell)",
+    "shortcut": "Cmd+F"
+  },
+  {
+    "id": "edit.replace",
+    "label": "Replace…",
+    "location": "Home > Editing > Find & Select",
+    "params": "{what, with, matchCase?, wholeCell?, all?: true, within?: sheet|workbook|selection} → {replaced, skipped?} (in a Python cell the code is edited; skipped counts Python cells whose code would no longer fit)",
+    "shortcut": "Ctrl+H"
+  },
+  {
+    "id": "edit.formatPainter",
+    "label": "Format Painter",
+    "location": "Home > Clipboard",
+    "params": "{sticky?: bool} — first call picks up the selection's formats; with {apply: \"C3:D4\"} pastes them",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.beginEdit",
+    "label": "Edit Cell",
+    "location": "",
+    "params": "{}",
+    "shortcut": "F2"
+  },
+  {
+    "id": "home.bold",
+    "label": "Bold",
+    "location": "Home > Font",
+    "params": "{range?, on?: bool}",
+    "shortcut": "Cmd+B"
+  },
+  {
+    "id": "home.italic",
+    "label": "Italic",
+    "location": "Home > Font",
+    "params": "{range?, on?}",
+    "shortcut": "Cmd+I"
+  },
+  {
+    "id": "home.underline",
+    "label": "Underline",
+    "location": "Home > Font",
+    "params": "{range?, on?, style?: single|double|singleAccounting|doubleAccounting}",
+    "shortcut": "Cmd+U"
+  },
+  {
+    "id": "home.doubleUnderline",
+    "label": "Double Underline",
+    "location": "Home > Font",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.strikethrough",
+    "label": "Strikethrough",
+    "location": "Home > Font",
+    "params": "{range?, on?}",
+    "shortcut": "Cmd+Shift+X"
+  },
+  {
+    "id": "home.superscript",
+    "label": "Superscript",
+    "location": "Home > Font",
+    "params": "{range?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.subscript",
+    "label": "Subscript",
+    "location": "Home > Font",
+    "params": "{range?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.fontName",
+    "label": "Font",
+    "location": "Home > Font",
+    "params": "{range?, name: \"Calibri\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.fontSize",
+    "label": "Font Size",
+    "location": "Home > Font",
+    "params": "{range?, size: 11}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.increaseFontSize",
+    "label": "Increase Font Size",
+    "location": "Home > Font",
+    "params": "{range?}",
+    "shortcut": "Cmd+Shift+>"
+  },
+  {
+    "id": "home.decreaseFontSize",
+    "label": "Decrease Font Size",
+    "location": "Home > Font",
+    "params": "{range?}",
+    "shortcut": "Cmd+Shift+<"
+  },
+  {
+    "id": "home.fontColor",
+    "label": "Font Color",
+    "location": "Home > Font",
+    "params": "{range?, color: \"#C00000\" | \"auto\" | {theme: 4, tint: -0.25}}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.fillColor",
+    "label": "Fill Color",
+    "location": "Home > Font",
+    "params": "{range?, color: \"#FFFF00\" | \"none\" | {theme, tint}}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.borders",
+    "label": "Borders",
+    "location": "Home > Font",
+    "params": "{range?, preset: bottom|top|left|right|none|all|outside|thickOutside|thickBottom|doubleBottom|topBottom|topThickBottom|topDoubleBottom|insideHorizontal|insideVertical|inside|diagonalDown|diagonalUp, style?: thin|medium|thick|dashed|dotted|double|hair…, color?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.formatCells",
+    "label": "Format Cells…",
+    "location": "Home > Cells > Format",
+    "params": "{range?, style: {font?, fill?, borders?, align?: {reading_order?: Context|LeftToRight|RightToLeft|null, ...}, numFmt?, protection?}} (partial Style JSON merged in; null clears reading_order)",
+    "shortcut": "Cmd+1"
+  },
+  {
+    "id": "home.alignLeft",
+    "label": "Align Left",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": "Cmd+L"
+  },
+  {
+    "id": "home.alignCenter",
+    "label": "Center",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": "Cmd+E"
+  },
+  {
+    "id": "home.alignRight",
+    "label": "Align Right",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.justify",
+    "label": "Justify",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.alignTop",
+    "label": "Top Align",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.alignMiddle",
+    "label": "Middle Align",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.alignBottom",
+    "label": "Bottom Align",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.wrapText",
+    "label": "Wrap Text",
+    "location": "Home > Alignment",
+    "params": "{range?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.shrinkToFit",
+    "label": "Shrink to Fit",
+    "location": "",
+    "params": "{range?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.increaseIndent",
+    "label": "Increase Indent",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": "Ctrl+Alt+Tab"
+  },
+  {
+    "id": "home.decreaseIndent",
+    "label": "Decrease Indent",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": "Ctrl+Alt+Shift+Tab"
+  },
+  {
+    "id": "home.orientation",
+    "label": "Orientation",
+    "location": "Home > Alignment",
+    "params": "{range?, angle: -90..90 | \"vertical\" | \"counterclockwise\" | \"clockwise\" | \"up\" | \"down\" | 0}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.mergeCenter",
+    "label": "Merge & Center",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.mergeAcross",
+    "label": "Merge Across",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.mergeCells",
+    "label": "Merge Cells",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.unmergeCells",
+    "label": "Unmerge Cells",
+    "location": "Home > Alignment",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.numberFormat",
+    "label": "Number Format",
+    "location": "Home > Number",
+    "params": "{range?, format: \"General\"|\"Number\"|\"Currency\"|\"Accounting\"|\"Short Date\"|\"Long Date\"|\"Time\"|\"Percentage\"|\"Fraction\"|\"Scientific\"|\"Text\" | code: \"0.00\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.accounting",
+    "label": "Accounting Number Format",
+    "location": "Home > Number",
+    "params": "{range?, symbol?: \"$\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.percent",
+    "label": "Percent Style",
+    "location": "Home > Number",
+    "params": "{range?}",
+    "shortcut": "Ctrl+Shift+%"
+  },
+  {
+    "id": "home.comma",
+    "label": "Comma Style",
+    "location": "Home > Number",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.increaseDecimal",
+    "label": "Increase Decimal",
+    "location": "Home > Number",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.decreaseDecimal",
+    "label": "Decrease Decimal",
+    "location": "Home > Number",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.cellStyle",
+    "label": "Cell Styles",
+    "location": "Home > Styles",
+    "params": "{range?, name: \"Good\"|\"Bad\"|\"Neutral\"|\"Heading 1\"|\"Title\"|\"Total\"|\"Accent1\"…|\"Normal\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.rowHeight",
+    "label": "Row Height…",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, rows?: \"2:5\" | \"2:2,4:5\" | \"Sheet2!2:5\", height: 20 (pixels) | points: 15}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.columnWidth",
+    "label": "Column Width…",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, cols?: \"B:D\" | \"B:B,D:F\" | \"Sheet2!B:D\", width: 64 (pixels) | chars: 8.43}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.autofitRowHeight",
+    "label": "AutoFit Row Height",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, rows?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.autofitColumnWidth",
+    "label": "AutoFit Column Width",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, cols?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.defaultWidth",
+    "label": "Default Width…",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, width: 64 (pixels)}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.hideRows",
+    "label": "Hide Rows",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet?, rows?}",
+    "shortcut": "Cmd+9"
+  },
+  {
+    "id": "home.hideColumns",
+    "label": "Hide Columns",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet?, cols?}",
+    "shortcut": "Cmd+0"
+  },
+  {
+    "id": "home.unhideRows",
+    "label": "Unhide Rows",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet?, rows?}",
+    "shortcut": "Cmd+Shift+9"
+  },
+  {
+    "id": "home.unhideColumns",
+    "label": "Unhide Columns",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet?, cols?}",
+    "shortcut": "Cmd+Shift+0"
+  },
+  {
+    "id": "home.lockCell",
+    "label": "Lock Cell",
+    "location": "Home > Cells > Format",
+    "params": "{range?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.insertRows",
+    "label": "Insert Sheet Rows",
+    "location": "Home > Cells > Insert",
+    "params": "{rows?: \"3:5\", count?}",
+    "shortcut": "Ctrl+Shift+="
+  },
+  {
+    "id": "home.insertColumns",
+    "label": "Insert Sheet Columns",
+    "location": "Home > Cells > Insert",
+    "params": "{cols?: \"B:C\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.deleteRows",
+    "label": "Delete Sheet Rows",
+    "location": "Home > Cells > Delete",
+    "params": "{rows?}",
+    "shortcut": "Cmd+-"
+  },
+  {
+    "id": "home.deleteColumns",
+    "label": "Delete Sheet Columns",
+    "location": "Home > Cells > Delete",
+    "params": "{cols?}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.moveColumns",
+    "label": "Move Columns",
+    "location": "",
+    "params": "{cols?: \"B:C\", before: zero-based column index}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.insertCells",
+    "label": "Insert Cells…",
+    "location": "Home > Cells > Insert",
+    "params": "{range?, shift: right|down|row|column}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.insertCopiedCells",
+    "label": "Insert Copied Cells",
+    "location": "Home > Cells > Insert",
+    "params": "{at?: \"B3\", shift?: down|right}: inserts the copied cells at `at` (the active cell) and pastes them there. Whole copied rows or columns insert whole rows or columns; other blocks shift the cells at `at` down (default) or right. A cut of whole rows or columns moves them (Insert Cut Cells)",
+    "shortcut": ""
+  },
+  {
+    "id": "home.deleteCells",
+    "label": "Delete Cells…",
+    "location": "Home > Cells > Delete",
+    "params": "{range?, shift: left|up|row|column}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.insertSheet",
+    "label": "Insert Sheet",
+    "location": "Home > Cells > Insert",
+    "params": "{name?, before?: index}",
+    "shortcut": "Shift+F11"
+  },
+  {
+    "id": "home.deleteSheet",
+    "label": "Delete Sheet",
+    "location": "Home > Cells > Delete",
+    "params": "{sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.rename",
+    "label": "Rename Sheet",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, name}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.move",
+    "label": "Move or Copy Sheet…",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, to: index, copy?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.tabColor",
+    "label": "Tab Color",
+    "location": "Home > Cells > Format",
+    "params": "{sheet?, color: \"#FF0000\"|\"none\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.hide",
+    "label": "Hide Sheet",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.unhide",
+    "label": "Unhide Sheet…",
+    "location": "Home > Cells > Format > Hide & Unhide",
+    "params": "{sheet}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.activate",
+    "label": "Activate Sheet",
+    "location": "",
+    "params": "{sheet: index | name}",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.next",
+    "label": "Next Sheet",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Ctrl+PageDown"
+  },
+  {
+    "id": "sheet.previous",
+    "label": "Previous Sheet",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Ctrl+PageUp"
+  },
+  {
+    "id": "insert.table",
+    "label": "Table",
+    "location": "Insert > Tables",
+    "params": "{range?, header?: true, style?: \"TableStyleMedium2\", name?}",
+    "shortcut": "Cmd+T"
+  },
+  {
+    "id": "home.formatAsTable",
+    "label": "Format as Table",
+    "location": "Home > Styles",
+    "params": "{range?, style: \"TableStyleMedium2\", header?} (inside a table: restyles it)",
+    "shortcut": ""
+  },
+  {
+    "id": "table.totalRow",
+    "label": "Total Row",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.bandedRows",
+    "label": "Banded Rows",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.bandedColumns",
+    "label": "Banded Columns",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.headerRow",
+    "label": "Header Row",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.firstColumn",
+    "label": "First Column",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.lastColumn",
+    "label": "Last Column",
+    "location": "Table > Table Style Options",
+    "params": "{table?, on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.style",
+    "label": "Table Styles",
+    "location": "Table > Table Styles",
+    "params": "{table?, style}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.rename",
+    "label": "Table Name",
+    "location": "Table > Properties",
+    "params": "{table?, name}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.convertToRange",
+    "label": "Convert to Range",
+    "location": "Table > Tools",
+    "params": "{table?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.totalFunction",
+    "label": "Totals Function",
+    "location": "",
+    "params": "{table?, column: \"Sales\", function: sum|average|count|countNums|max|min|stdDev|var|none}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.chart",
+    "label": "Insert Chart",
+    "location": "Insert > Charts",
+    "params": "{range?, type?: column|bar|line|pie|doughnut|area|scatter|bubble|radar|combo|histogram|waterfall|funnel|treemap|sunburst|boxWhisker|stock, subtype?: clustered|stacked|stacked100|markers, title?, at?: \"H2\", width?, height?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.recommendedCharts",
+    "label": "Recommended Charts",
+    "location": "Insert > Charts",
+    "params": "{range?, type?, subtype?} (no type: the first of insert.chartRecommendations; the ribbon button opens the dialog)",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.chartRecommendations",
+    "label": "Chart Recommendations",
+    "location": "",
+    "params": "{range?} → [{type, subtype, label}] chart types that suit the data's shape, best first",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.set",
+    "label": "Chart Properties",
+    "location": "Chart Design",
+    "params": "{chart?: id, type?, subtype?, title?, legend?: none|bottom|top|left|right, dataLabels?, gridlines?, dataTable?: bool, dataTableKeys?: bool, dataTableHorizontalBorder?: bool, dataTableVerticalBorder?: bool, dataTableOutline?: bool (data tables: column/bar/line/area and compatible combo charts), quartiles?: exclusive|inclusive, style?, holeSize?, firstSliceAngle?, xTitle?, yTitle?, at?, width?, height?, dx?, dy?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.switchRowColumn",
+    "label": "Switch Row/Column",
+    "location": "Chart Design > Data",
+    "params": "{chart?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.delete",
+    "label": "Delete Chart",
+    "location": "",
+    "params": "{chart?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.sparkline",
+    "label": "Sparklines",
+    "location": "Insert > Sparklines",
+    "params": "{range: \"B2:M2\", location: \"N2\", type?: line|column|winLoss, markers?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.picture",
+    "label": "Picture",
+    "location": "Insert > Illustrations",
+    "params": "{path? | base64?: \"...\", mime?, at?: \"B2\", width?, height?, alt?, mode?: moveOnly|moveAndSize|absolute, placement?: cell|overCells}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.shape",
+    "label": "Shapes",
+    "location": "Insert > Illustrations",
+    "params": "{kind: rectangle|roundedRectangle|ellipse|triangle|line|arrow|textBox, at?, width?, height?, text?, fill?, line?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.icons",
+    "label": "Icons",
+    "location": "Insert > Illustrations",
+    "params": "{name: chart|table|sum|filter|lock|comment|picture|book|folder|search|calc|check|… , at?, size?: 48, color?: hex}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.textBox",
+    "label": "Text Box",
+    "location": "Insert > Text",
+    "params": "{at?, width?, height?, text?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.setText",
+    "label": "Edit Text Box",
+    "location": "",
+    "params": "{id: textBox id, text: string}",
+    "shortcut": ""
+  },
+  {
+    "id": "object.delete",
+    "label": "Delete Object",
+    "location": "",
+    "params": "{kind: chart|image|shape|slicer|equation|control, id}",
+    "shortcut": ""
+  },
+  {
+    "id": "object.move",
+    "label": "Move Object",
+    "location": "",
+    "params": "{kind: chart|image|shape|slicer|equation|control, id, at?: \"C3\", dx?, dy?, width?, height? (each at most 10,000 points, or the object's current size when a file made it larger)}",
+    "shortcut": ""
+  },
+  {
+    "id": "object.setAnchorMode",
+    "label": "Object Properties",
+    "location": "",
+    "params": "{kind: chart|image|shape|slicer|equation|control, id, mode: moveAndSize|moveOnly|absolute}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.link",
+    "label": "Link",
+    "location": "Insert > Links",
+    "params": "{cell?, target: \"https://…\" | \"Book.xlsx\" | \"Sheet2!A1\" | \"mailto:…\", text?, tooltip?, remove?: bool}",
+    "shortcut": "Cmd+K"
+  },
+  {
+    "id": "link.open",
+    "label": "Open Hyperlink",
+    "location": "",
+    "params": "{url?: \"https://…\" | \"mailto:…\" | \"Sheet2!A1\", cell?} (default: the cell's link); a reference selects; a web or e-mail address is an error unless the host allows it: the user opens those by clicking the link and confirming; any scheme but http, https and mailto is always an error",
+    "shortcut": ""
+  },
+  {
+    "id": "review.newNote",
+    "label": "New Note",
+    "location": "Review > Notes",
+    "params": "{cell?, text, author?}",
+    "shortcut": "Shift+F2"
+  },
+  {
+    "id": "review.newComment",
+    "label": "New Comment",
+    "location": "Review > Comments",
+    "params": "{cell?, text, author?}",
+    "shortcut": "Cmd+Shift+F2"
+  },
+  {
+    "id": "review.replyComment",
+    "label": "Reply",
+    "location": "",
+    "params": "{cell?, text, author?}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.resolveComment",
+    "label": "Resolve Thread",
+    "location": "",
+    "params": "{cell?, resolved?: true}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.deleteComment",
+    "label": "Delete Comment",
+    "location": "Review > Comments",
+    "params": "{cell?}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.showNote",
+    "label": "Show/Hide Note",
+    "location": "Review > Notes",
+    "params": "{cell?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.symbol",
+    "label": "Symbol",
+    "location": "Insert > Symbols",
+    "params": "{char: \"€\"} (inserted at the end of the active cell's text)",
+    "shortcut": ""
+  },
+  {
+    "id": "home.conditionalFormat",
+    "label": "Conditional Formatting",
+    "location": "Home > Styles",
+    "params": "{range?, rule: {type: cellIs|expression|containsText|beginsWith|endsWith|blanks|noBlanks|errors|noErrors|duplicate|unique|top10|aboveAverage|timePeriod|colorScale|dataBar|iconSet, operator?, value?, value2?, formula?, text?, rank?, bottom?, percent?, below?, period?, colors?: [..], color?, set?, style?: {font?: {bold?, italic?, color?}, fill?: \"#FFC7CE\" | {pattern?, fg?, bg?}, borders?, num_fmt?} (colours \"#RRGGBB\") | preset?: lightRedFill|redText|yellowFill|greenFill|redBorder|lightRedFillDarkRedText…}; a text `value` is matched as text, or kept when already a quoted literal}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.clearRules",
+    "label": "Clear Rules",
+    "location": "Home > Styles > Conditional Formatting",
+    "params": "{range?|sheet: true}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.manageRules",
+    "label": "Manage Rules…",
+    "location": "Home > Styles > Conditional Formatting",
+    "params": "{delete?: index, moveUp?: index, moveDown?: index}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.button",
+    "label": "Button",
+    "location": "Insert > Controls",
+    "params": "{at?: \"B2\" (or cell), dx?, dy?, width?, height?, text?, macro?: name, input?: \"selection\" | \"B2:D9\", output?: \"F2\", command?: id, params?: {..}} places a button; pressing it runs the macro or the command → {control: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.slider",
+    "label": "Slider",
+    "location": "Insert > Controls",
+    "params": "{at?: \"B2\" (or cell), dx?, dy?, width?, height?, link?: \"$B$1\" | \"Sheet2!$B$1\", min?: 0, max?: 100, step?: 1, page?: 10, value?, horizontal?: true} whole numbers, 0 ≤ min < max ≤ 30000, 1 ≤ step ≤ max − min, page ≥ step → {control: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.spinButton",
+    "label": "Spin Button",
+    "location": "Insert > Controls",
+    "params": "{at?: \"B2\" (or cell), dx?, dy?, width?, height?, link?: \"$B$1\", min?: 0, max?: 100, step?: 1, value?} whole numbers, 0 ≤ min < max ≤ 30000, 1 ≤ step ≤ max − min → {control: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "control.format",
+    "label": "Format Control",
+    "location": "",
+    "params": "{id, text?, name?, link?: \"$B$1\" | \"\" (no link), min?, max?, step?, page?, value?, horizontal?, print?, locked?} → the control (as control.list)",
+    "shortcut": ""
+  },
+  {
+    "id": "control.assign",
+    "label": "Assign Action",
+    "location": "",
+    "params": "{id, macro?: name, input?: \"selection\" | \"B2:D9\", output?: \"F2\" | command?: id, params?: {..} | clear?: true} sets what a button runs → the control",
+    "shortcut": ""
+  },
+  {
+    "id": "control.setValue",
+    "label": "Change Control Value",
+    "location": "",
+    "params": "{id, value} clamps the value to min..max, snaps it to the step, and writes it to the linked cell → {value}",
+    "shortcut": ""
+  },
+  {
+    "id": "control.press",
+    "label": "Press Button",
+    "location": "",
+    "params": "{id, approve?: bool, onConflict?, overwrite?} runs a button's macro or command (through the macro policy, with the workbook's trust; a workbook from a file asks first) → what the macro or command returned",
+    "shortcut": ""
+  },
+  {
+    "id": "control.list",
+    "label": "Form Controls",
+    "location": "",
+    "params": "{} → the active sheet's controls: [{id, kind, name, text, at, link?, value, min, max, step, page, horizontal, action?}]",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.equation",
+    "label": "Equation",
+    "location": "Insert > Symbols",
+    "params": "{latex: \"x^2\", cell?|at?: \"B2\", size?: 11 (points), color?: hex|\"auto\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "equation.edit",
+    "label": "Edit Equation",
+    "location": "",
+    "params": "{id, latex}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.sortAscending",
+    "label": "Sort A to Z",
+    "location": "Data > Sort & Filter",
+    "params": "{range?, column?: \"B\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.sortDescending",
+    "label": "Sort Z to A",
+    "location": "Data > Sort & Filter",
+    "params": "{range?, column?}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.sort",
+    "label": "Sort…",
+    "location": "Data > Sort & Filter",
+    "params": "{range?, header?: bool, keys: [{column: \"B\", order: asc|desc, by?: values|cellColor|fontColor, customList?: [..]}], orientation?: rows|columns, matchCase?}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.filter",
+    "label": "Filter",
+    "location": "Data > Sort & Filter",
+    "params": "{range?} toggles AutoFilter on the current region",
+    "shortcut": "Ctrl+Shift+L"
+  },
+  {
+    "id": "data.filterBy",
+    "label": "Filter Column",
+    "location": "",
+    "params": "{column: \"B\" (or 0-based offset), values?: [..], blanks?: bool, custom?: {op: \">\", value: \"10\", op2?, value2?, and?}, top?: {count, bottom?, percent?}, aboveAverage?: bool, clear?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.clearFilter",
+    "label": "Clear",
+    "location": "Data > Sort & Filter",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.reapply",
+    "label": "Reapply",
+    "location": "Data > Sort & Filter",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.removeDuplicates",
+    "label": "Remove Duplicates",
+    "location": "Data > Data Tools",
+    "params": "{range?, columns?: [\"A\",\"C\"], header?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.textToColumns",
+    "label": "Text to Columns",
+    "location": "Data > Data Tools",
+    "params": "{range?, delimiters?: [\",\", \"\\t\", \" \", \";\"], other?: \"|\", fixedWidths?: [5, 10], treatConsecutive?: bool, textQualifier?: \"\\\"\", destination?: \"B1\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.validation",
+    "label": "Data Validation…",
+    "location": "Data > Data Tools",
+    "params": "{range?, type: any|whole|decimal|list|date|time|textLength|custom, operator?: between|notBetween|equal|notEqual|greater|less|greaterOrEqual|lessOrEqual, formula1, formula2?, ignoreBlank?, dropdown?, inputTitle?, inputMessage?, errorStyle?: stop|warning|information, errorTitle?, errorMessage?, clear?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.validate",
+    "label": "Check Value Against Validation",
+    "location": "",
+    "params": "{cell?, input} → {ok, message?}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.circleInvalid",
+    "label": "Circle Invalid Data",
+    "location": "Data > Data Tools > Data Validation",
+    "params": "{} → {invalid: [cell], truncated: bool (true when the 100,000-cell scan allowance ended before every range was checked)}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.group",
+    "label": "Group",
+    "location": "Data > Outline",
+    "params": "{rows?: \"2:5\" | cols?: \"B:C\" | by?: rows|cols (the selection's rows or columns; a block of cells groups rows by default), sheet?}",
+    "shortcut": "Alt+Shift+Right"
+  },
+  {
+    "id": "data.ungroup",
+    "label": "Ungroup",
+    "location": "Data > Outline",
+    "params": "{rows? | cols? | by?: rows|cols, sheet?}",
+    "shortcut": "Alt+Shift+Left"
+  },
+  {
+    "id": "data.hideDetail",
+    "label": "Hide Detail",
+    "location": "Data > Outline",
+    "params": "{rows? | cols? | by?, level?: 1-7} (the innermost group, or the one at `level`, holding the lines or summarised by them)",
+    "shortcut": ""
+  },
+  {
+    "id": "data.showDetail",
+    "label": "Show Detail",
+    "location": "Data > Outline",
+    "params": "{rows? | cols? | by?, level?: 1-7}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.showLevels",
+    "label": "Show Outline Levels",
+    "location": "",
+    "params": "{rows?: 1-8, cols?: 1-8} (1 shows only the top-level summaries, as the outline's level buttons)",
+    "shortcut": ""
+  },
+  {
+    "id": "data.outlineSettings",
+    "label": "Outline Settings",
+    "location": "Data > Outline",
+    "params": "{sheet?, summaryBelow?: bool, summaryRight?: bool} (summary rows below their detail, summary columns right of it; off puts them above / left) → {summaryBelow, summaryRight}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.subtotal",
+    "label": "Subtotal",
+    "location": "Data > Outline",
+    "params": "{range?, groupBy: \"A\", function?: sum|count|average|max|min|product, columns: [\"C\"], header?: true}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.flashFill",
+    "label": "Flash Fill",
+    "location": "Data > Data Tools",
+    "params": "{range?}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.autoSum",
+    "label": "AutoSum",
+    "location": "Formulas > Function Library",
+    "params": "{function?: SUM|AVERAGE|COUNT|MAX|MIN, range?}",
+    "shortcut": "Cmd+Shift+T"
+  },
+  {
+    "id": "formulas.insertFunction",
+    "label": "Insert Function…",
+    "location": "Formulas > Function Library",
+    "params": "{name?: \"VLOOKUP\"} (UI opens the dialog; with a name, starts the formula in the active cell)",
+    "shortcut": "Shift+F3"
+  },
+  {
+    "id": "formulas.functions",
+    "label": "List Functions",
+    "location": "",
+    "params": "{category?, search?} → [{name, category, signature, description}]",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.defineName",
+    "label": "Define Name…",
+    "location": "Formulas > Defined Names",
+    "params": "{name, refersTo?: \"=Sheet1!$A$1:$A$10\" (default: the selection), scope?: \"Workbook\"|sheet name, comment?, oldName?, oldScope?, force?: bool} (oldName: edit that name (Name Manager › Edit); a new name also renames it in formulas; a hidden name GridCraft keeps its own data in, `_gc_<key>_<n>` or `_sc_<key>`, is refused unless force is true)",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.deleteName",
+    "label": "Delete Name",
+    "location": "",
+    "params": "{name, scope?: \"Workbook\"|sheet name (default: every scope), force?: bool} (a hidden name GridCraft keeps its own data in, `_gc_<key>_<n>` or `_sc_<key>`, is refused unless force is true)",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.nameManager",
+    "label": "Name Manager",
+    "location": "Formulas > Defined Names",
+    "params": "{} → names with values",
+    "shortcut": "Cmd+F3"
+  },
+  {
+    "id": "formulas.createFromSelection",
+    "label": "Create from Selection",
+    "location": "Formulas > Defined Names",
+    "params": "{range?, top?: true, left?: false, bottom?: false, right?: false, replace?: false (existing names are kept and listed in `skipped`), force?: false (labels of the shape GridCraft keeps its own data in, `_gc_<key>_<n>` and `_sc_<key>`, are listed in `skipped` unless force is true)}",
+    "shortcut": "Cmd+Shift+F3"
+  },
+  {
+    "id": "formulas.pasteName",
+    "label": "Paste Names…",
+    "location": "Formulas > Defined Names",
+    "params": "{name?: \"Sales\" (one of the names listed; OK: puts the name at the caret of the cell being edited, or starts `=Sales` in the active cell), list?: true (Paste List: writes each name and what it refers to in two columns, from `at`), at?: cell (default the active cell)} → {names: [{name, refersTo}]}: the names the Paste Name dialog lists (workbook names and the active sheet's own, hidden names left out, in alphabetical order). With neither nothing changes; the menu opens the dialog.",
+    "shortcut": "F3"
+  },
+  {
+    "id": "formulas.tracePrecedents",
+    "label": "Trace Precedents",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?} → ranges",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.traceDependents",
+    "label": "Trace Dependents",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?} → cells",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.traceError",
+    "label": "Trace Error",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?} → {sheet, cell, error, source: {sheet, cell}, arrows: [{from: {sheet, range}, to: {sheet, cell}, kind: \"error\"|\"precedent\"}], truncated}: from the cell, follows the first reference that shows the same error (in a range, its first cell showing it) back to the cell the error starts in, `source`. `error` arrows link the cells on the way; `precedent` arrows lead from the source's own references into it. A cell without an error gives `error` and `source` null and no arrows. A chain longer than 10,000 links stops there with `truncated` true and `source` null.",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.selectPrecedents",
+    "label": "Select Precedents",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?, all?: true = every level (Ctrl+Shift+[)} → selects the precedent cells",
+    "shortcut": "Ctrl+["
+  },
+  {
+    "id": "formulas.selectDependents",
+    "label": "Select Dependents",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?, all?: true = every level (Ctrl+Shift+])}",
+    "shortcut": "Ctrl+]"
+  },
+  {
+    "id": "formulas.removeArrows",
+    "label": "Remove Arrows",
+    "location": "Formulas > Formula Auditing",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.showFormulas",
+    "label": "Show Formulas",
+    "location": "Formulas > Formula Auditing",
+    "params": "{on?}",
+    "shortcut": "Ctrl+`"
+  },
+  {
+    "id": "formulas.convertToNumber",
+    "label": "Convert to Number",
+    "location": "",
+    "params": "{range?} → {converted} (numbers stored as text in the range or selection become numbers)",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.errorChecking",
+    "label": "Error Checking",
+    "location": "Formulas > Formula Auditing",
+    "params": "{} → cells with errors",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.evaluateFormula",
+    "label": "Evaluate Formula",
+    "location": "Formulas > Formula Auditing",
+    "params": "{cell?, formula?} → steps",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.evaluate",
+    "label": "Evaluate",
+    "location": "",
+    "params": "{formula: \"=SUM(A1:A3)\", cell?} → value without changing the sheet; a formula that couldn't be entered in a cell is an error",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.calculateNow",
+    "label": "Calculate Now",
+    "location": "Formulas > Calculation",
+    "params": "{}",
+    "shortcut": "F9"
+  },
+  {
+    "id": "formulas.calculateSheet",
+    "label": "Calculate Sheet",
+    "location": "Formulas > Calculation",
+    "params": "{}",
+    "shortcut": "Shift+F9"
+  },
+  {
+    "id": "formulas.calculationOptions",
+    "label": "Calculation Options",
+    "location": "Formulas > Calculation",
+    "params": "{mode?: automatic|automaticExceptTables|manual, iterative?: bool (Enable iterative calculation), maxIterations?: 1–32767 (100), maxChange?: number (0.001), precisionAsDisplayed?: bool (Set precision as displayed: numbers are stored as their format shows them; turning it on rounds every number constant permanently)} → the settings. File › Options › Formulas › Calculation options; stored in the workbook.",
+    "shortcut": ""
+  },
+  {
+    "id": "review.protectSheet",
+    "label": "Protect Sheet…",
+    "location": "Review > Protect",
+    "params": "{password?, formatCells?, formatColumns?, formatRows?, insertRows?, insertColumns?, deleteRows?, deleteColumns?, sort?, autofilter?}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.unprotectSheet",
+    "label": "Unprotect Sheet",
+    "location": "Review > Protect",
+    "params": "{password?}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.protectWorkbook",
+    "label": "Protect Workbook",
+    "location": "Review > Protect",
+    "params": "{on?: bool (default: toggle), password?} (structure protection; unprotecting needs the password when one was set)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.workbookStatistics",
+    "label": "Workbook Statistics",
+    "location": "Review > Proofing",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.allowEditRanges",
+    "label": "Allow Edit Ranges…",
+    "location": "Review > Protect",
+    "params": "{action?: list (default) | add | modify | delete | unlock, title?, range?, password?, newTitle?, sheet?} → ranges",
+    "shortcut": ""
+  },
+  {
+    "id": "review.checkAccessibility",
+    "label": "Check Accessibility",
+    "location": "Review > Accessibility",
+    "params": "{} → issues",
+    "shortcut": ""
+  },
+  {
+    "id": "review.previousComment",
+    "label": "Previous Comment",
+    "location": "Review > Comments",
+    "params": "{} → {sheet, cell}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.nextComment",
+    "label": "Next Comment",
+    "location": "Review > Comments",
+    "params": "{} → {sheet, cell}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.showComments",
+    "label": "Show Comments",
+    "location": "Review > Comments",
+    "params": "{on?: bool} (toggles the Comments pane)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.showAllNotes",
+    "label": "Show All Notes",
+    "location": "Review > Notes",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.convertToComments",
+    "label": "Convert to Comments",
+    "location": "Review > Notes",
+    "params": "{} (every note in the workbook) → {converted}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.freezePanes",
+    "label": "Freeze Panes",
+    "location": "View > Window > Freeze Panes",
+    "params": "{sheet?, cell?: \"B2\" (rows above and columns left of it freeze); without `cell`, unfreezes a frozen sheet}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.freezeTopRow",
+    "label": "Freeze Top Row",
+    "location": "View > Window > Freeze Panes",
+    "params": "{sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.freezeFirstColumn",
+    "label": "Freeze First Column",
+    "location": "View > Window > Freeze Panes",
+    "params": "{sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.unfreezePanes",
+    "label": "Unfreeze Panes",
+    "location": "View > Window > Freeze Panes",
+    "params": "{sheet?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.gridlines",
+    "label": "Gridlines",
+    "location": "View > Show",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.headings",
+    "label": "Headings",
+    "location": "View > Show",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.showZeros",
+    "label": "Show Zeros",
+    "location": "",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.showOutlineSymbols",
+    "label": "Show Outline Symbols",
+    "location": "",
+    "params": "{on?}",
+    "shortcut": "Ctrl+8"
+  },
+  {
+    "id": "view.showObjects",
+    "label": "Show Objects",
+    "location": "",
+    "params": "{on?}",
+    "shortcut": "Ctrl+6"
+  },
+  {
+    "id": "view.showSheetTabs",
+    "label": "Show Sheet Tabs",
+    "location": "",
+    "params": "{on?} (File › Options › Advanced, this workbook; toggles without `on`)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.showHorizontalScrollBar",
+    "label": "Show Horizontal Scroll Bar",
+    "location": "",
+    "params": "{on?} (this workbook; toggles without `on`)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.showVerticalScrollBar",
+    "label": "Show Vertical Scroll Bar",
+    "location": "",
+    "params": "{on?} (this workbook; toggles without `on`)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.rightToLeft",
+    "label": "Sheet Right-to-Left",
+    "location": "Page Layout > Sheet Options",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.zoom",
+    "label": "Zoom",
+    "location": "View > Zoom",
+    "params": "{percent: 10..400}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.zoom100",
+    "label": "100%",
+    "location": "View > Zoom",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.formulaBar",
+    "label": "Formula Bar",
+    "location": "View > Show",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.statusBar",
+    "label": "Customize Status Bar",
+    "location": "",
+    "params": "{average?, count?, numericalCount?, minimum?, maximum?, sum?: bool (the statistics shown for a selection; returns all six)}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.zoomToSelection",
+    "label": "Zoom to Selection",
+    "location": "View > Zoom",
+    "params": "{viewWidth?, viewHeight?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.orientation",
+    "label": "Orientation",
+    "location": "Page Layout > Page Setup",
+    "params": "{orientation: portrait|landscape}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.size",
+    "label": "Size",
+    "location": "Page Layout > Page Setup",
+    "params": "{paper: Letter|Legal|A4|A3|A5|A6|Tabloid|Executive|Ledger|B4|B5|B6|B4 (ISO)|B5 (ISO)|B6 (ISO)|Japanese Postcard|Japanese Double Postcard|Japanese Envelope #3|Japanese Envelope #4|Japanese Envelope Kaku #2|Japanese Envelope Kaku #3 (B4/B5/B6 are the JIS sizes)}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.margins",
+    "label": "Margins",
+    "location": "Page Layout > Page Setup",
+    "params": "{preset?: normal|wide|narrow, left?, right?, top?, bottom?, header?, footer? (inches)}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.printArea",
+    "label": "Set Print Area",
+    "location": "Page Layout > Page Setup > Print Area",
+    "params": "{range?, clear?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.printTitles",
+    "label": "Print Titles",
+    "location": "Page Layout > Page Setup",
+    "params": "{rows?: \"1:1\", cols?: \"A:A\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.scaleToFit",
+    "label": "Scale to Fit",
+    "location": "Page Layout > Scale to Fit",
+    "params": "{scale?: 100, width?: pages, height?: pages}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.printGridlines",
+    "label": "Print Gridlines",
+    "location": "Page Layout > Sheet Options",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.printHeadings",
+    "label": "Print Headings",
+    "location": "Page Layout > Sheet Options",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.breaks",
+    "label": "Breaks",
+    "location": "Page Layout > Page Setup",
+    "params": "{insert?: bool, remove?: bool, reset?: bool, cell?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.headerFooter",
+    "label": "Header & Footer",
+    "location": "Insert > Text",
+    "params": "{sheet?, header?: \"&C&P\", footer?: \"&CPage &P of &N\", differentFirst?: bool, differentOddEven?: bool, scaleWithDoc?: bool, alignWithMargins?: bool, firstHeader?, firstFooter?, evenHeader?, evenFooter?} or one section: {sheet?, page?: odd|even|first, part: header|footer, section: left|center|right, text: \"Page &[Page] of &[Pages]\"} (field names or codes) → {header, footer, differentFirst, differentOddEven, scaleWithDoc, alignWithMargins, firstHeader, firstFooter, evenHeader, evenFooter}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.theme",
+    "label": "Themes",
+    "location": "Page Layout > Themes",
+    "params": "{name: Craft|Slate|Meadow|Ember|Ocean|Orchid|Graphite, colors?: [12 hex], majorFont?, minorFont?}",
+    "shortcut": ""
+  },
+  {
+    "id": "document.inspect",
+    "label": "Inspect Workbook",
+    "location": "",
+    "params": "{} → sheets, selection, names, tables, charts, dirty, trust (local|fromFile), history",
+    "shortcut": ""
+  },
+  {
+    "id": "sheet.read",
+    "label": "Read Range",
+    "location": "",
+    "params": "{range?: \"A1:D10\" (default: used range), sheet?, formulas?: bool, formatted?: bool} → rows of values",
+    "shortcut": ""
+  },
+  {
+    "id": "cell.get",
+    "label": "Get Cell",
+    "location": "",
+    "params": "{cell?, sheet?} → value, formula, display text, style, comment, link, python {code, output, typeName, preview, stale}",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.stats",
+    "label": "Selection Statistics",
+    "location": "",
+    "params": "{} → count, sum, average, min, max",
+    "shortcut": ""
+  },
+  {
+    "id": "history.list",
+    "label": "Undo History",
+    "location": "",
+    "params": "{} → undo/redo labels, grouping (an undo group is open)",
+    "shortcut": ""
+  },
+  {
+    "id": "app.commands",
+    "label": "List Commands",
+    "location": "",
+    "params": "{search?} → ids, labels, params",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.addElement",
+    "label": "Add Chart Element",
+    "location": "Chart Design > Chart Layouts",
+    "params": "{chart?, element: title|legend|dataLabels|dataTable|gridlines|axisTitles|smooth|trendline, on?: bool, position?: bottom|top|left|right; dataTable: dataTableKeys?: bool, dataTableHorizontalBorder?: bool, dataTableVerticalBorder?: bool, dataTableOutline?: bool; trendline: series?: index (default all), type?: linear|exponential|linearForecast|movingAverage|logarithmic|power|polynomial, order?: 2..6, period?: 2..255, forward?, backward?, displayEquation?, displayRSquared?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.quickLayout",
+    "label": "Quick Layout",
+    "location": "Chart Design > Chart Layouts",
+    "params": "{chart?, layout: 1..6}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.changeColors",
+    "label": "Change Colors",
+    "location": "Chart Design > Chart Styles",
+    "params": "{chart?, palette: colorful|monochrome|accent1..accent6 | colors: [hex…]}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.selectData",
+    "label": "Select Data…",
+    "location": "Chart Design > Data",
+    "params": "{chart?, range?: \"Sheet1!A1:D7\", byRows?: bool, categories?: \"Sheet1!A2:A7\" (Horizontal (Category) Axis Labels for every series; \"\" clears), removeSeries?: [index…]}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.changeType",
+    "label": "Change Chart Type…",
+    "location": "Chart Design > Type",
+    "params": "{chart?, type, subtype?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.move",
+    "label": "Move Chart…",
+    "location": "Chart Design > Location",
+    "params": "{chart?, sheet?: name (moves to that sheet), at?: \"B2\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.formatSelection",
+    "label": "Format Selection",
+    "location": "Format > Current Selection",
+    "params": "{chart?, series?: index, color?: hex}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.shapeFill",
+    "label": "Shape Fill",
+    "location": "Format > Shape Styles",
+    "params": "{chart? | kind: shape, id?, series?, color: hex}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.shapeOutline",
+    "label": "Shape Outline",
+    "location": "Format > Shape Styles",
+    "params": "{kind: shape, id?, color: hex}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.bringForward",
+    "label": "Bring Forward",
+    "location": "Page Layout > Arrange",
+    "params": "{kind: chart|image|shape|slicer|equation|control, id, toFront?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.sendBackward",
+    "label": "Send Backward",
+    "location": "Page Layout > Arrange",
+    "params": "{kind: chart|image|shape|slicer|equation|control, id, toBack?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.selectionPane",
+    "label": "Selection Pane",
+    "location": "Page Layout > Arrange",
+    "params": "{} → objects on the sheet in stacking order",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.align",
+    "label": "Align",
+    "location": "Page Layout > Arrange",
+    "params": "{kind: chart|image|shape|slicer|equation|control, ids: [..], align: left|center|right|top|middle|bottom}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.group",
+    "label": "Group",
+    "location": "Page Layout > Arrange",
+    "params": "{kind, ids} (moves objects together: aligns their anchors to the first)",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.rotate",
+    "label": "Rotate",
+    "location": "Page Layout > Arrange",
+    "params": "{kind: shape, id} (swaps width/height for a 90° turn; `flip` is rejected: shapes have no flip state)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.normal",
+    "label": "Normal",
+    "location": "View > Workbook Views",
+    "params": "{sheet?} → {view} (per sheet, saved with the file)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.pageLayout",
+    "label": "Page Layout",
+    "location": "View > Workbook Views",
+    "params": "{sheet?} → {view}: pages on paper with rulers; headers and footers are edited in place (per sheet, saved with the file)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.pageBreakPreview",
+    "label": "Page Break Preview",
+    "location": "View > Workbook Views",
+    "params": "{sheet?} → {view} (per sheet, saved with the file)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.customViews",
+    "label": "Custom Views…",
+    "location": "View > Workbook Views",
+    "params": "{save?: name, show?: name, delete?: name} → list",
+    "shortcut": ""
+  },
+  {
+    "id": "view.split",
+    "label": "Split",
+    "location": "View > Window",
+    "params": "{} (toggles a split at the active cell; shown as frozen panes in this version)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.newWindow",
+    "label": "New Window",
+    "location": "View > Window",
+    "params": "{} → {window, doc, title}: opens another window on the active workbook (the same workbook: saving from either window saves it)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.arrangeAll",
+    "label": "Arrange All",
+    "location": "View > Window",
+    "params": "{arrange?: tiled|horizontal|vertical|cascade, activeWorkbook?: bool} → {arrange, windows}: lays out the visible windows (tiled by default; `activeWorkbook` only the active workbook's), the active window first",
+    "shortcut": ""
+  },
+  {
+    "id": "view.hideWindow",
+    "label": "Hide",
+    "location": "View > Window",
+    "params": "{window?, doc?} (the active window by default)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.unhideWindow",
+    "label": "Unhide…",
+    "location": "View > Window",
+    "params": "{window?, doc?, index?} (the most recently hidden window by default)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.switchWindows",
+    "label": "Switch Windows",
+    "location": "View > Window",
+    "params": "{window?, doc?} → open windows [{window, doc, index, title, dirty, active, hidden}]; with `window` (an id from the list), or `doc` (a workbook id: its most recent window), shows and activates that window first",
+    "shortcut": ""
+  },
+  {
+    "id": "view.ruler",
+    "label": "Ruler",
+    "location": "View > Show",
+    "params": "{on?} → {on}: rulers in Page Layout view (an application option)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.macros",
+    "label": "Macros",
+    "location": "View > Macros",
+    "params": "{} → scripts",
+    "shortcut": ""
+  },
+  {
+    "id": "table.resize",
+    "label": "Resize Table",
+    "location": "Table Design > Properties",
+    "params": "{table?, range: \"A1:F20\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.removeDuplicates",
+    "label": "Remove Duplicates",
+    "location": "Table Design > Tools",
+    "params": "{table?, columns?}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.fromTextCsv",
+    "label": "From Text/CSV",
+    "location": "Data > Get & Transform Data",
+    "params": "{path | text, delimiter?: \",\", sheet?: new sheet name} → imports into a new sheet as a table",
+    "shortcut": ""
+  },
+  {
+    "id": "data.getData",
+    "label": "Get Data",
+    "location": "Data > Get & Transform Data",
+    "params": "{path | text} (CSV/TSV/JSON array of objects) → new sheet table",
+    "shortcut": ""
+  },
+  {
+    "id": "data.fromTableRange",
+    "label": "From Table/Range",
+    "location": "Data > Get & Transform Data",
+    "params": "{range?} → copies the table/range to a new sheet as a table",
+    "shortcut": ""
+  },
+  {
+    "id": "data.queriesConnections",
+    "label": "Queries & Connections",
+    "location": "Data > Queries & Connections",
+    "params": "{} → imported tables",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.recordActions",
+    "label": "Record Actions",
+    "location": "Automate > Scripting Tools",
+    "params": "{stop?: bool, name?: script name when stopping}",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.newScript",
+    "label": "New Script",
+    "location": "Automate > Scripting Tools",
+    "params": "{name, commands: [{command, params}] }",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.allScripts",
+    "label": "All Scripts",
+    "location": "Automate > Scripting Tools",
+    "params": "{} → saved scripts",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.runScript",
+    "label": "Run Script",
+    "location": "",
+    "params": "{name, trusted?: bool (runs a script from an untrusted workbook this once)} — refuses scripts in a workbook opened from a file until it is trusted, and steps that reach outside the workbook (file.*, link.*, any `path` param)",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.trustScripts",
+    "label": "Trust Scripts",
+    "location": "Automate > Scripting Tools",
+    "params": "{trusted?: bool (default true)} → {trusted}: lets this workbook's scripts run for the rest of the session",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.deleteScript",
+    "label": "Delete Script",
+    "location": "",
+    "params": "{name}",
+    "shortcut": ""
+  },
+  {
+    "id": "automate.stopAction",
+    "label": "Stop Action",
+    "location": "",
+    "params": "{} → {stopped: bool}: stops an action left running on the active workbook (an open undo group, such as a debugger's) and puts back the workbook and its undo history as they were when it began",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.checkbox",
+    "label": "Checkbox",
+    "location": "Insert > Cell Controls",
+    "params": "{range?} (TRUE/FALSE and empty cells draw as checkboxes, empty ones become FALSE, other values show as they are; click or Space toggles; Delete unchecks, then removes; Clear Formats removes and keeps the values)",
+    "shortcut": ""
+  },
+  {
+    "id": "cell.toggleCheckbox",
+    "label": "Toggle Checkbox",
+    "location": "",
+    "params": "{cell?}",
+    "shortcut": "Space"
+  },
+  {
+    "id": "pageLayout.themeColors",
+    "label": "Colors",
+    "location": "Page Layout > Themes",
+    "params": "{name: theme name | colors: [12 hex]}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.themeFonts",
+    "label": "Fonts",
+    "location": "Page Layout > Themes",
+    "params": "{major, minor}",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.themeEffects",
+    "label": "Effects",
+    "location": "Page Layout > Themes",
+    "params": "{name} (chart effects preset; stored with the theme name)",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.background",
+    "label": "Background",
+    "location": "Page Layout > Page Setup",
+    "params": "{path? | clear?: bool} (sheet background picture)",
+    "shortcut": ""
+  },
+  {
+    "id": "home.drawBorder",
+    "label": "Draw Border",
+    "location": "Home > Font",
+    "params": "{range, edge: top|bottom|left|right|grid, style?, color?}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.newCellStyle",
+    "label": "New Cell Style…",
+    "location": "Home > Styles",
+    "params": "{name, fromCell?: \"A1\" (default: active cell)}",
+    "shortcut": ""
+  },
+  {
+    "id": "home.addIns",
+    "label": "Add-ins",
+    "location": "Home > Add-ins",
+    "params": "{} → GridCraft extends through MCP and scripts instead of add-ins",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.recentlyUsed",
+    "label": "Recently Used",
+    "location": "Formulas > Function Library",
+    "params": "{} → the functions most recently entered in formulas, newest first",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.financial",
+    "label": "Financial",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.logical",
+    "label": "Logical",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.text",
+    "label": "Text",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.dateTime",
+    "label": "Date & Time",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.lookupReference",
+    "label": "Lookup & Reference",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.mathTrig",
+    "label": "Math & Trig",
+    "location": "Formulas > Function Library",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.moreFunctions",
+    "label": "More Functions",
+    "location": "Formulas > Function Library",
+    "params": "{category?: Statistical|Engineering|Information|Database|Compatibility|Web|Cube}",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.useInFormula",
+    "label": "Use in Formula",
+    "location": "Formulas > Defined Names",
+    "params": "{name} (inserts the name into the cell being edited)",
+    "shortcut": ""
+  },
+  {
+    "id": "formulas.watchWindow",
+    "label": "Watch Window",
+    "location": "Formulas > Formula Auditing",
+    "params": "{add?: \"Sheet1!B5\", remove?: \"…\"} → watched cells with current values",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.list",
+    "label": "List Macros",
+    "location": "",
+    "params": "{} → [{name, description, shortcut?, steps, inputs: [names], onConflict, permissions}]",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.get",
+    "label": "Get Macro",
+    "location": "",
+    "params": "{name} → the macro: {v, name, description, shortcut?, inputs, steps, output, permissions}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.save",
+    "label": "Save Macro",
+    "location": "",
+    "params": "{macro: {name, description?, shortcut?, inputs?: [{name, kind: cell|range, rows: [min, max], cols: [min, max], header, colTypes: [number|text|date|bool|any], nonEmpty, defaultRef?}], steps: [{type: command, id, params, enabled?, breakpoint?, note?} | {type: repeat, over, of: rows|columns, max, body} | {type: if, cell, op: eq|ne|gt|ge|lt|le|empty|notEmpty|contains, value, then, else} | {type: stop, message, rollback?}], output?: {anchor?, onConflict: ask|fail|overwrite|shiftDown|shiftRight}, permissions?: [command ids]} (or those fields at the top level), replace?: bool (default false: saving over a macro with the name is refused)} → {name, steps}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.delete",
+    "label": "Delete Macro",
+    "location": "",
+    "params": "{name}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.rename",
+    "label": "Rename Macro",
+    "location": "",
+    "params": "{name, to}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.run",
+    "label": "Run Macro",
+    "location": "",
+    "params": "{name, inputs?: {Input: \"B2:D9\"} | \"B2:D9\", output?: \"F2\" (instead of the macro's output anchor), onConflict?: ask|fail|overwrite|shiftDown|shiftRight, overwrite?: bool, approve?: bool, timeLimit?: seconds} runs as one undo step; any error rolls it all back → {macro, ran, inputs, stopped?, shifted?}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.check",
+    "label": "Check Macro",
+    "location": "",
+    "params": "{name, inputs?, output?: \"F2\" (as macro.run), onConflict?, overwrite?, timeLimit?: seconds} validates the inputs and dry-runs the macro on the workbook (then puts everything back) → {ok (macro.run with these parameters would go ahead without a question), errors?, needsApproval?, onConflict, inputs, output?, conflicts, footprint}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.record",
+    "label": "Record Macro",
+    "location": "View > Macros",
+    "params": "{stop?: bool, cancel?: bool (ends a recording without saving it), relative?: bool (default true; when starting), name?, shortcut?: \"Ctrl+Shift+M\" | \"M\", description?} toggles recording; when starting, the name (new and valid) and the shortcut (free) are checked and kept for the save, and without a name the macro gets the next MacroN; when stopping, a name or description given then wins (a taken name gets a suffix); with relative references the selection when it starts is the example input → {recording, name?, relative?, input?} or {recording: false, saved, steps, dropped, skipped, inputs, shortcutDropped? (the shortcut another macro took while recording)}",
+    "shortcut": ""
+  },
+  {
+    "id": "macro.debug",
+    "label": "Step Into",
+    "location": "",
+    "params": "{action: start|step|continue|runTo|stop|state, name, inputs?, output?, overwrite?, approve?, timeLimit?: seconds per action (start, as macro.run), step: path (runTo), keep?: bool (stop), breakpoints?: [\"3\", \"2.1\"] (steps of the macro), breakpointsOnly?: bool (the list replaces the steps' own breakpoints)} debugs a macro one step at a time; stop keeps the changes as one undo step or rolls them back. Runs on its own, never as a step of a script or macro. Until it finishes or stops, its workbook runs only macro.debug, queries, selection and sheet changes, Go To, Find, Copy, zoom, Switch Window, Close and Stop Action (other workbooks stay editable) → {state: paused|finished|stopped|failed, current: {step, kind, command?, params?, iteration?}, lastParams, executed, changed (at most 500), changedCells, atBreakpoint?, shifted?, wroteFiles?, message?, error?}",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.pen",
+    "label": "Pen",
+    "location": "Draw > Tools",
+    "params": "{on?: bool, color?: hex, width?: 2}",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.eraser",
+    "label": "Eraser",
+    "location": "Draw > Tools",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.lasso",
+    "label": "Lasso Select",
+    "location": "Draw > Tools",
+    "params": "{} (selects ink by dragging; same as Select Objects)",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.stroke",
+    "label": "Ink Stroke",
+    "location": "",
+    "params": "{points: [[x,y],…] in sheet points, color?: hex, width?: 2}",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.inkToShape",
+    "label": "Ink to Shape",
+    "location": "Draw > Convert",
+    "params": "{id?} converts an ink stroke (default: the last) into a rectangle, ellipse, triangle or line",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.wordArt",
+    "label": "WordArt",
+    "location": "Insert > Text",
+    "params": "{style?: preset name or 0-based index (Classic, Midnight, Sunrise, Lagoon, Ember, Mint Outline, Ink Stamp, Orchid, Graphite, Lime Pop), text?, at?, width?, height?, fontSize?, bold?, italic?, fill?: hex, outline?: hex|false, outlineWidth?, shadow?: hex|bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "wordArt.set",
+    "label": "Format WordArt",
+    "location": "",
+    "params": "{id: WordArt id, style?, text?, fontSize?, bold?, italic?, fill?: hex, outline?: hex|false, outlineWidth?, shadow?: hex|bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.spelling",
+    "label": "Spelling",
+    "location": "Review > Proofing",
+    "params": "{range?, sheet?} → misspelled words with cells and suggestions",
+    "shortcut": "F7"
+  },
+  {
+    "id": "review.addToDictionary",
+    "label": "Add to Dictionary",
+    "location": "",
+    "params": "{word}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.changeSpelling",
+    "label": "Change",
+    "location": "",
+    "params": "{cell, word, to, all?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.thesaurus",
+    "label": "Thesaurus",
+    "location": "Review > Proofing",
+    "params": "{word} → related words (words sharing the stem in the dictionary)",
+    "shortcut": ""
+  },
+  {
+    "id": "data.solver",
+    "label": "Solver…",
+    "location": "Data > Analysis",
+    "params": "{objective: \"B10\" (formula cell), goal?: max|min|value (default max), value?: number (for goal value), variables: \"B2:B4,D1\" (≤200 constant cells, same sheet), constraints?: [\"B5 <= 10\", \"B2:B4 >= C2:C4\", \"B2 int\", \"B3 bin\", {lhs: \"B6\", op: \"=\", rhs: 3 | \"C6\"}], nonNegative?: bool (default true: variables without a lower bound get 0), method?: grg|simplex|evolutionary (default grg), populationSize?: 100, mutationRate?: 0.075, randomSeed?: 0 (a fixed seed, so runs repeat), convergence?: 0.0001, generationsWithoutImprovement?: 50, requireBounds?: bool (default true: every variable needs both bounds; false searches within ±100 of the start) (Evolutionary options), keep?: bool (default true; false restores the original values), saveModel?: bool (default true: hidden names, solver_* as Excel names them, with the options; the evaluation limit and generations without improvement, which Excel lacks, as gridcraft_solver_evals and gridcraft_solver_stall), maxEvaluations?: 20000 (at most 200000), integerOptimality?: percent (default 0), saved?: bool (solve the sheet's saved model; other params override), reports?: [answer|sensitivity|limits] (written on new sheets when a solution is found)} → {status: optimal|converged|cannotImprove|iterationLimit|infeasible|unbounded|notLinear, message, objective, values: {cell: value}, original: {cell: value}, model: the model as params, evaluations, changed, reports?: [sheet names], skippedReports?: [{report: \"sensitivity\", reason}] (a Sensitivity report left out because the run did not reach an optimum or the values are not one; the solve and the other reports still apply)}. No `objective` → {model: the saved model} (the menu opens the dialog).",
+    "shortcut": ""
+  },
+  {
+    "id": "data.solverReport",
+    "label": "Solver Reports",
+    "location": "",
+    "params": "{reports: [answer|sensitivity|limits], values?: {cell: number} (the solution; default the variable cells' current values), original?: {cell: number} (the values before solving; default `values`), message?: text (the result line), skipNotOptimal?: bool (default false: a Sensitivity report for values that are not optimal refuses the call; true leaves it out and writes the others), model?: data.solver params (default the sheet's saved model, with any data.solver params given here over it)} → {sheets: [names], skippedReports?: [{report, reason}]}. Writes Answer, Sensitivity and Limits reports on new sheets before the model's sheet; Sensitivity and Limits need Simplex LP or GRG Nonlinear and no integer constraints, and Sensitivity a Max or Min objective. data.solver's result can be passed as is.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.solverSaveModel",
+    "label": "Save Model",
+    "location": "",
+    "params": "{to: \"H1\" (the first cell, on the model's sheet), model?: data.solver params (default the sheet's saved model), overwrite?: false} → {range}. Writes the model down a column as formulas: =MAX(objective), =MIN(objective) or =objective=value; =COUNT(variables); one =AND(relation) per constraint (=AND(x=INT(x)) for integer, =AND((x=0)+(x=1)) for binary), which shows TRUE while it holds; and the options as an array constant {method (1 GRG Nonlinear, 2 Simplex LP, 3 Evolutionary), non-negative (1 yes, 2 no), population size, mutation rate, random seed, require bounds (1 yes, 2 no), convergence, generations without improvement, maximum evaluations, integer optimality %}, which spills into the cells to its right. Refused, with the sheet unchanged, when the model's cells, content, another formula's spilled values, merged cells or a table are in the way of the options' spill, or it would run off the sheet, and when the column would cover another formula's spilled values. A column that holds a value or a formula (a model saved there before included) is replaced only with overwrite: true; without it the command is refused (\"already holds data\"), as Excel asks first. One undo step.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.solverLoadModel",
+    "label": "Load Model",
+    "location": "",
+    "params": "{from: \"H1:H6\" (a range on the active sheet; one cell reads down to the first cell without a formula; a range needs a formula in every cell up to its last formula, and may end in empty cells)} → {model}. Reads a model written by Save Model and makes it the sheet's Solver model. The model must end with its options row ({…}), which Save Model writes last; a model cut short (a cell before the options row without a formula, or the options row cleared) is refused and the sheet's model stays as it was.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.solverReset",
+    "label": "Reset All",
+    "location": "",
+    "params": "{} → {removed, masked}. Removes the active sheet's Solver model. A model read from workbook-level names stays for the other sheets and is masked on this one by an empty sheet-level solver_opt (masked: true).",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.pivotTable",
+    "label": "PivotTable",
+    "location": "Insert > Tables",
+    "params": "{source?: \"Sheet1!$A$1:$E$200\" | table name (default: the table or current region of the selection), destination?: \"new\" (default: new sheet before the current one, report at A3) | \"Sheet1!H3\", name?, rows?: [field | {field, group?: years|quarters|months|days}], columns?: [..], values?: [field | {field, func?, name?}], filters?: [field], replace?: bool} → {id, name, sheet, anchor, fields}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.recommendedPivotTables",
+    "label": "Recommended PivotTables",
+    "location": "Insert > Tables",
+    "params": "{source?, apply?: index, destination?} → suggestions [{index, title, rows, columns, values}]; with apply, creates that one",
+    "shortcut": ""
+  },
+  {
+    "id": "table.summarizePivot",
+    "label": "Summarize with PivotTable",
+    "location": "Table Design > Tools",
+    "params": "{table?, destination?} creates a PivotTable from the table",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.calculatedField",
+    "label": "Calculated Field",
+    "location": "PivotTable Analyze > Calculations",
+    "params": "{pivot?, name, formula?: \"=Sales*0.1\" (fields bare or 'quoted'; evaluated on each cell's sums), delete?: bool, values?: bool (add a new field to Values, default true)} adds, changes or deletes a calculated field; without `name` opens the dialog → {name, formula, calculatedFields}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.pivotChart",
+    "label": "PivotChart",
+    "location": "Insert > Charts",
+    "params": "{pivot?: name | id | a cell of the report (\"Sheet2!B5\"; default: the PivotTable at the active cell), type?: column|bar|line|pie|area|… (default column), subtype?, title?, at?: \"H2\", width?, height?} adds a chart bound to the PivotTable's report: categories are the innermost row items, series the column items × value fields; it follows refreshes and layout changes → {chart, pivot, series}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.fields",
+    "label": "PivotTable Fields",
+    "location": "",
+    "params": "{pivot?} → source fields (name, numeric, date, samples, areas) and the current layout",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.fieldList",
+    "label": "Field List",
+    "location": "PivotTable Analyze > Show",
+    "params": "{pivot?} (same as pivot.fields)",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.list",
+    "label": "PivotTables",
+    "location": "",
+    "params": "{} → every PivotTable in the workbook",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.addField",
+    "label": "Add Field",
+    "location": "",
+    "params": "{pivot?, field, area: rows|columns|values|filters, func?: sum|count|average|max|min|product|countNumbers|stdDev|stdDevP|var|varP, name?, position?: index, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.removeField",
+    "label": "Remove Field",
+    "location": "",
+    "params": "{pivot?, field (or value caption), area?: rows|columns|values|filters, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.moveField",
+    "label": "Move Field",
+    "location": "",
+    "params": "{pivot?, field (\"Σ Values\" moves the value fields between rows and columns; in columns it stays after the last field), from: rows|columns|values|filters, to: rows|columns|values|filters, position?: index, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.valueSettings",
+    "label": "Value Field Settings",
+    "location": "PivotTable Analyze > Active Field",
+    "params": "{pivot?, field: caption or source field | index: n, func?, name?, showAs?: normal|percentOfGrandTotal|percentOfColumnTotal|percentOfRowTotal|runningTotal|rank, numberFormat?: \"#,##0\" | null, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.filter",
+    "label": "Filter Items",
+    "location": "",
+    "params": "{pivot?, field, selected: [\"East\", ..] | null (all), replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.sort",
+    "label": "Sort Field",
+    "location": "",
+    "params": "{pivot?, field, order: asc|desc|none, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.group",
+    "label": "Group Field",
+    "location": "PivotTable Analyze > Group",
+    "params": "{pivot?, field, by: years|quarters|months|days|none, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.collapse",
+    "label": "Expand/Collapse Field",
+    "location": "PivotTable Analyze > Active Field",
+    "params": "{pivot?, field, items?: [labels] (default: all), collapse?: true, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.layout",
+    "label": "PivotTable Layout",
+    "location": "PivotTable Design > Layout",
+    "params": "{pivot?, layout?: compact|outline|tabular, grandTotalsRows?: bool, grandTotalsCols?: bool, subtotals?: bool|top|bottom|none, style?: \"PivotStyleLight16\", showHeaders?: bool, replace?}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.grandTotals",
+    "label": "Grand Totals",
+    "location": "PivotTable Design > Layout",
+    "params": "{pivot?, mode?: off|on|rows|columns, rows?: bool, cols?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.subtotals",
+    "label": "Subtotals",
+    "location": "PivotTable Design > Layout",
+    "params": "{pivot?, mode: none|top|bottom}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.reportLayout",
+    "label": "Report Layout",
+    "location": "PivotTable Design > Layout",
+    "params": "{pivot?, layout: compact|outline|tabular}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.style",
+    "label": "PivotTable Styles",
+    "location": "PivotTable Design > PivotTable Styles",
+    "params": "{pivot?, style: \"PivotStyleMedium9\"}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.refresh",
+    "label": "Refresh",
+    "location": "PivotTable Analyze > Data",
+    "params": "{pivot?, replace?}",
+    "shortcut": "Alt+F5"
+  },
+  {
+    "id": "data.refreshAll",
+    "label": "Refresh All",
+    "location": "Data > Queries & Connections",
+    "params": "{replace?} refreshes every PivotTable → {refreshed, errors}",
+    "shortcut": "Cmd+Alt+F5"
+  },
+  {
+    "id": "pivot.changeSource",
+    "label": "Change Data Source",
+    "location": "PivotTable Analyze > Data",
+    "params": "{pivot?, source: \"Sheet1!$A$1:$E$300\" | table name, replace?} (fields missing from the new source are removed)",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.showDetails",
+    "label": "Show Details",
+    "location": "",
+    "params": "{cell?: \"B5\" (a value, subtotal or grand total cell of a PivotTable on the active sheet; default: the active cell)} puts the source records behind that value on a new sheet before the current one → {sheet, records}. An error when the PivotTable's Enable show details option is off (`pivot.options` `{enableShowDetails: true}` turns it on).",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.options",
+    "label": "PivotTable Options",
+    "location": "PivotTable Analyze > PivotTable",
+    "params": "{pivot?, enableShowDetails?: bool (Data › Enable show details: off, Show Details and double-clicking a value cell list no records)} → {enableShowDetails}",
+    "shortcut": ""
+  },
+  {
+    "id": "pivot.delete",
+    "label": "Delete PivotTable",
+    "location": "PivotTable Analyze > Actions",
+    "params": "{pivot?} clears the report and removes the PivotTable",
+    "shortcut": ""
+  },
+  {
+    "id": "python.set",
+    "label": "Set Python Code",
+    "location": "",
+    "params": "{cell?, code, output?: object|value} makes the cell (default: the active cell) a Python cell with this code; the code must fit in Excel's 8,192-character formula once written as PY(…). `output` is the return type: `value` (an Excel value, the default) or `object` (a Python object)",
+    "shortcut": ""
+  },
+  {
+    "id": "python.output",
+    "label": "Python Output",
+    "location": "",
+    "params": "{cell?, mode?: object|value} sets the return type of a Python cell (default: the active cell): `object` (a Python object) or `value` (an Excel value). Without `mode` it switches to the other one. The cell keeps its code; a cached result of the old return type goes, as with `python.set`, so the cell shows #BLOCKED! until it runs",
+    "shortcut": "Ctrl+Alt+Shift+M"
+  },
+  {
+    "id": "insert.slicer",
+    "label": "Slicer",
+    "location": "Insert > Filters",
+    "params": "{table?, column?: \"Region\", columns?: 1, at?: \"H2\", width?, height?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.insertSlicer",
+    "label": "Insert Slicer",
+    "location": "Table > Tools",
+    "params": "{table?, column?: \"Region\", columns?: 1, at?, width?, height?}",
+    "shortcut": ""
+  },
+  {
+    "id": "slicer.toggle",
+    "label": "Toggle Slicer Value",
+    "location": "",
+    "params": "{slicer?: id, value: \"East\", multi?: false}",
+    "shortcut": ""
+  },
+  {
+    "id": "slicer.selectAll",
+    "label": "Clear Slicer Filter",
+    "location": "",
+    "params": "{slicer?: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "slicer.clear",
+    "label": "Clear Slicer Filter",
+    "location": "",
+    "params": "{slicer?: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "slicer.delete",
+    "label": "Delete Slicer",
+    "location": "",
+    "params": "{slicer?: id}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.goalSeek",
+    "label": "Goal Seek…",
+    "location": "Data > Forecast > What-If Analysis",
+    "params": "{set: \"B5\" (formula cell), to: number, changing: \"B2\" (constant cell)} → {value, result, iterations, converged}. Secant search with bisection once the answer is bracketed; stops within Maximum Change (0.001) or after Maximum Iterations (100) from File › Options › Formulas. Writes the found value into `changing`.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.scenarioManager",
+    "label": "Scenario Manager…",
+    "location": "Data > Forecast > What-If Analysis",
+    "params": "{sheet?} → {scenarios: [{name, sheet, changing, values, comment}]} (scenarios of the active sheet; `sheet: \"*\"` lists all)",
+    "shortcut": ""
+  },
+  {
+    "id": "data.scenarioAdd",
+    "label": "Add Scenario",
+    "location": "",
+    "params": "{name, changing: \"B2:B4\" or \"B2,B4\" (≤32 cells, active sheet), values?: [..] (default: the cells' current values), comment?, replace?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.scenarioShow",
+    "label": "Show Scenario",
+    "location": "",
+    "params": "{name} writes the scenario's values into its changing cells",
+    "shortcut": ""
+  },
+  {
+    "id": "data.scenarioDelete",
+    "label": "Delete Scenario",
+    "location": "",
+    "params": "{name}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.scenarioSummary",
+    "label": "Scenario Summary",
+    "location": "",
+    "params": "{resultCells?: \"B10\" or \"B10:B12,D4\"} inserts a \"Scenario Summary\" sheet: changing cells and result cells for the current values and each scenario",
+    "shortcut": ""
+  },
+  {
+    "id": "data.dataTable",
+    "label": "Data Table…",
+    "location": "Data > Forecast > What-If Analysis",
+    "params": "{range: \"D2:E10\", rowInput?: \"B1\", columnInput?: \"B2\"} one-variable (values down the first column with columnInput, or across the top row with rowInput; formulas in the other edge) or two-variable (formula in the top-left corner). Computes every result by substitution and writes static values (a snapshot, not a live {=TABLE()}); ≤100,000 cells.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.advancedFilter",
+    "label": "Advanced…",
+    "location": "Data > Sort & Filter",
+    "params": "{range? (list with headers; default current region), criteria?: \"H1:I3\" (omitted/blank matches all rows; header row of field names; rows OR'ed, columns AND'ed; \">100\", \"=abc\", \"a*\", \"<>\"; blank-headed formula cells are computed criteria for the first data row), copyTo?: \"K1\" (else filter in place by hiding rows), unique?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.consolidate",
+    "label": "Consolidate…",
+    "location": "Data > Data Tools",
+    "params": "{sources: [\"Sheet2!A1:C10\", ..], destination?: \"A1\" (default active cell), function?: sum|count|countNums|average|max|min|product, topRow?: bool, leftColumn?: bool (consolidate by labels; else by position)}",
+    "shortcut": ""
+  },
+  {
+    "id": "data.forecastSheet",
+    "label": "Forecast Sheet",
+    "location": "Data > Forecast",
+    "params": "{timeline?: \"A2:A25\", values?: \"B2:B25\" (default: the first two columns of `range`, the selection or the current region; a text first cell is the header), end?: timeline value or date text | periods?: n (default: a third of the history, at least 1; ≤10,000 and history × periods ≤ 500,000, or with a forecastStart inside the history (hindcast rows are forecast too) (the greater of the fitted rows and fitted slots × (periods + rows from forecastStart on, that row included)) ≤ 500,000; history ≤ 10,000 rows), forecastStart?: a timeline value or date text on the history, before its last point (hindcast: the model is fit to the points before it, the forecast columns start there and run over the actuals; default and the last point: forecast after the history), confidenceInterval?: bool (default true), confidence?: 0.95 or 95, seasonality?: \"auto\" | 0 (none) | 2–8,760, fillMissing?: interpolate|zeros, aggregate?: average|count|counta|max|median|min|sum, statistics?: bool, chart?: line|column} → {sheet, table, chart, history, periods}. Inserts a sheet before the active one: timeline, values, Forecast (FORECAST.ETS), Lower/Upper Confidence Bound (FORECAST.ETS.CONFINT), optional FORECAST.ETS.STAT table, and a chart.",
+    "shortcut": ""
+  },
+  {
+    "id": "data.analysisToolPak",
+    "label": "Data Analysis…",
+    "location": "Data > Analysis",
+    "params": "{tool: anovaSingle|anovaTwoFactorWith|anovaTwoFactorWithout|correlation|covariance|descriptive|exponentialSmoothing|fTest|fourierAnalysis|histogram|movingAverage|randomNumberGeneration|rankPercentile|regression|sampling|tTestPaired|tTestEqual|tTestUnequal|zTest (or the tool's label), output?: \"E1\" (top-left of the report; default a new sheet), newSheet?: name, outputTo?: range|newSheet (picks between the two), overwrite?: bool (else non-empty output cells are refused), labels?: bool (first row/column holds names), groupedBy?: columns|rows, …tool params} — range tools take `range`; descriptive: summary? (default true), confidence?: 95, kthLargest?, kthSmallest?; histogram: bins?: range (default evenly spaced), pareto?, cumulative?; regression: inputY, inputX, constantZero?, confidence?: 95, residuals?, standardizedResiduals?, normalProbability?; movingAverage: interval? (3), standardErrors?; exponentialSmoothing: damping? (0.3), standardErrors?; t-tests and fTest: range1, range2, alpha? (0.05), hypothesizedDifference? (0); anovaSingle: alpha?; anovaTwoFactorWithout: range, labels? (the first row holds column names and the first column row names), alpha?; anovaTwoFactorWith: range (first row and column hold labels), rowsPerSample, alpha?; zTest: range1, range2, variance1, variance2 (known variances), alpha?, hypothesizedDifference?; fourierAnalysis: range (one row or column of 2^k numbers or complex text, at most 4096), inverse?; randomNumberGeneration: variables? (1), count (per variable; not for patterned), distribution: uniform{from, to} | normal{mean, standardDeviation} | bernoulli{p} | binomial{p, trials} | poisson{lambda} | patterned{from, to, step, repeatEach, repeatSequence} | discrete{valueRange: two columns of value and probability}, seed? (whole number, not for patterned; the same seed repeats the numbers; the result reports the seed used), at most 1,000,000 numbers; sampling: range, method?: periodic|random, period (periodic), samples (random, with replacement), seed?. Writes static values. No `tool` → {tools} (the menu opens the dialog).",
+    "shortcut": ""
+  },
+  {
+    "id": "file.exportPdf",
+    "label": "Export as PDF",
+    "location": "File > Export",
+    "params": "{path?, sheets?: active|all, range?: \"A1:F40\" (active sheet), fitToPage?: bool} → {pages, bytes, path} or {pages, bytes, base64} when no path. Honours each sheet's Page Setup.",
+    "shortcut": ""
+  },
+  {
+    "id": "file.print",
+    "label": "Print…",
+    "location": "File",
+    "params": "{path?, sheets?: active|all, range?, fitToPage?: bool} → {pages, bytes, base64} — the PDF the UI hands to the system print dialog",
+    "shortcut": "Cmd+P"
+  },
+  {
+    "id": "file.printPreview",
+    "label": "Print Preview",
+    "location": "File",
+    "params": "{page? (1-based), sheets?: active|all, range?, fitToPage?} → {pages, pageList: [{page, sheet, range, rows, columns, scale, paper, orientation, pageOrder, width, height}]} in print order",
+    "shortcut": ""
+  },
+  {
+    "id": "pageLayout.pageSetup",
+    "label": "Page Setup…",
+    "location": "Page Layout > Page Setup",
+    "params": "{sheet?, orientation?: portrait|landscape, paper?: Letter|Legal|A4|A3|A5|A6|Tabloid|Executive|Ledger|B4|B5|B6|B4 (ISO)|B5 (ISO)|B6 (ISO)|Japanese Postcard|Japanese Double Postcard|Japanese Envelope #3|Japanese Envelope #4|Japanese Envelope Kaku #2|Japanese Envelope Kaku #3 (B4/B5/B6 are the JIS sizes), margins?: {left,right,top,bottom,header,footer} (inches; also accepted as top-level keys), scale?: 10..400, fitWidth?, fitHeight? (pages; 0 = automatic), fitToPage?: bool, centerH?, centerV?, gridlines?, headings?, header?: \"&L&A&RPage &P of &N\", footer?, printArea?: \"A1:F50\" (\"\" clears), titleRows?: \"1:2\", titleCols?: \"A:A\", rowBreaks?: [46, 91], colBreaks?: [\"K\"], pageOrder?: downThenOver|overThenDown} → the sheet's print settings",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.ribbonTab",
+    "label": "Ribbon Tab",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "app.checkForUpdates",
+    "label": "Check for Updates…",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "view.collapseRibbon",
+    "label": "Collapse Ribbon",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "view.expandFormulaBar",
+    "label": "Expand Formula Bar",
+    "location": "",
+    "params": "{on?: bool} (toggles without it) → {on}; {lines: int} sets the expanded height (1 collapses) → {on, lines}",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.pythonMode",
+    "label": "Python Mode",
+    "location": "",
+    "params": "{on?: bool} (toggles without it) → {on}; a refused start is an error",
+    "shortcut": ""
+  },
+  {
+    "id": "view.darkMode",
+    "label": "Dark Mode",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "view.theme",
+    "label": "Display Theme",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "view.animations",
+    "label": "Animations",
+    "location": "",
+    "params": "{on?: bool} (toggles without it) → {on}",
+    "shortcut": ""
+  },
+  {
+    "id": "options.autoComplete",
+    "label": "Enable AutoComplete for cell values",
+    "location": "",
+    "params": "{on?: bool} (toggles without it) → {on}",
+    "shortcut": ""
+  },
+  {
+    "id": "options.highlightActiveRow",
+    "label": "Highlight the active cell's row",
+    "location": "",
+    "params": "{on?: bool} (toggles without it) → {on}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.interfaceScale",
+    "label": "Interface Size",
+    "location": "",
+    "params": "{percent: 75–200 | \"auto\"} (100 = auto; clamped)",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.window.minimize",
+    "label": "Minimize Window",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.window.maximize",
+    "label": "Maximize Window",
+    "location": "",
+    "params": "{on: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.window.close",
+    "label": "Close Window",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.window.beginResize",
+    "label": "Resize Window",
+    "location": "",
+    "params": "{direction: north|south|east|west|northeast|northwest|southeast|southwest}",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.dialog",
+    "label": "Open Dialog",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.backstage",
+    "label": "File (Backstage view)",
+    "location": "",
+    "params": "{page?: home|new|open|info|saveAs|print|export|options|account|close}",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.printSettings",
+    "label": "Print Settings",
+    "location": "",
+    "params": "{printer?: discovered name, copies?: 1..999, duplex?: printerDefault|off|longEdge|shortEdge|null, grayscale?: bool, refresh?: bool} → {printer,copies,duplex,grayscale,printers,ready,busy,discovering,status,detail}; {} inspects without submitting",
+    "shortcut": ""
+  },
+  {
+    "id": "ui.printSubmit",
+    "label": "Submit Print Job",
+    "location": "",
+    "params": "existing file.print sheet/pagination params → {printing,bytes,pending}; submits without opening a dialog",
+    "shortcut": ""
+  },
+  {
+    "id": "app.language.set",
+    "label": "Interface Language",
+    "location": "",
+    "params": "{language: \"en\"|\"es\"|\"el\"|\"zh\"|\"ja\"|\"ko\"|\"ru\"|\"pt\"|\"de\"|\"cs\"|\"fr\"|\"sr\"|\"pl\"|\"it\"|\"uk\"|\"vi\"|\"nl\"|\"ro\"|\"tr\"} (alias: code)",
+    "shortcut": ""
+  },
+  {
+    "id": "app.language.english",
+    "label": "Interface Language: English",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  },
+  {
+    "id": "app.language.japanese",
+    "label": "Interface Language: Japanese",
+    "location": "",
+    "params": "",
+    "shortcut": ""
+  }
+]

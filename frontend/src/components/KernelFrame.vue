@@ -80,8 +80,26 @@ function notifyPluginsChanged() {
   frame.value?.contentWindow?.postMessage(`${props.kernel}:pluginsChanged`, location.origin)
 }
 
+/**
+ * 官方页面命令 API 薄代理：调用内核窗口上的 window.<app>.<method>（同源 iframe 可直接访问）。
+ * method ∈ request/execute/commands/docInspect/uiInspect/screenshot，均返回 promise（内核自带超时）。
+ * 仅新快照内核（gridcraft 起）注入了 window.<app>；旧内核无此对象时返回 null。
+ */
+function kernelApi(): Record<string, (...args: unknown[]) => Promise<unknown>> | null {
+  const win = frame.value?.contentWindow as (Window & Record<string, unknown>) | null | undefined
+  const api = win?.[props.kernel]
+  return api && typeof api === 'object' ? (api as Record<string, (...args: unknown[]) => Promise<unknown>>) : null
+}
+
+function call(method: string, ...args: unknown[]): Promise<unknown> {
+  const api = kernelApi()
+  const fn = api?.[method]
+  if (typeof fn !== 'function') return Promise.reject(new Error(`内核 ${props.kernel} 不支持 ${method}（缺少页面命令 API）`))
+  return fn.apply(api, args)
+}
+
 onMounted(() => window.addEventListener('message', onMessage))
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 
-defineExpose({ openDoc, notifyPluginsChanged })
+defineExpose({ openDoc, notifyPluginsChanged, call, kernelApi })
 </script>

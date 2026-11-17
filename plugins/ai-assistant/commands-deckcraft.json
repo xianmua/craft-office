@@ -1,0 +1,2683 @@
+[
+  {
+    "id": "file.new",
+    "label": "New Presentation",
+    "location": "File",
+    "params": "{theme?: name, template?: starter name, size?: [w,h] pt, blank?: bool}",
+    "shortcut": "Cmd+N"
+  },
+  {
+    "id": "file.templates",
+    "label": "Starter Templates",
+    "location": "",
+    "params": "{} → [{name, summary, theme, slides}]",
+    "shortcut": ""
+  },
+  {
+    "id": "file.open",
+    "label": "Open…",
+    "location": "File",
+    "params": "{path}",
+    "shortcut": "Cmd+O"
+  },
+  {
+    "id": "file.adopt",
+    "label": "Open",
+    "location": "",
+    "params": "{path, token?} (a presentation the host read in the background and staged with Session::stage_loaded; without one, reads path like file.open)",
+    "shortcut": ""
+  },
+  {
+    "id": "file.openBytes",
+    "label": "Open Data",
+    "location": "",
+    "params": "{name, data: base64}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.save",
+    "label": "Save",
+    "location": "File",
+    "params": "{path?, format?: deckcraft|pptx}",
+    "shortcut": "Cmd+S"
+  },
+  {
+    "id": "file.saveAs",
+    "label": "Save As…",
+    "location": "File",
+    "params": "{path, format?}",
+    "shortcut": "Cmd+Shift+S"
+  },
+  {
+    "id": "file.saveTemplate",
+    "label": "Save as Template…",
+    "location": "File",
+    "params": "{path}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.saveBytes",
+    "label": "Save to Data",
+    "location": "",
+    "params": "{format?: deckcraft|pptx} → {data: base64}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.export",
+    "label": "Export…",
+    "location": "File",
+    "params": "{path, format?: png|jpeg|pptx|deckcraft|outline|rtf|pdf|gif (else by path), slide?: index, all?: bool, scale?: px per pt, layout?: slides|notes|handouts (pdf), perPage?: 1|2|3|4|6|9, paper?: letter|a4|legal|a3 (pdf), orientation?: portrait|landscape (pdf), dpi?, slides?: [index]|range (\"1-3,5\"), includeHidden?, textLayer?, frame?, transparentBackground?: bool (png: leave the slide background out), width?: px 16-3840|small|medium|large|extraLarge (gif), secondsPerSlide?: 0.1-600 (gif; 5), loop?: bool (gif; true: forever)} → {path, bytes} or {files} (png, jpeg); gif adds frames, width, height, secondsPerSlide",
+    "shortcut": ""
+  },
+  {
+    "id": "file.info",
+    "label": "Info",
+    "location": "File",
+    "params": "{} → {title, path, format, dirty, slides, hiddenSlides, sections, bytes?, properties}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.render",
+    "label": "Render Slide",
+    "location": "",
+    "params": "{slide?: index, scale?, edit?: bool, transparentBackground?: bool} → {png: base64, width, height}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.colorAt",
+    "label": "Color At",
+    "location": "",
+    "params": "{slide?: index, x, y (slide units), scale?: px per unit (2)} → {color: \"RRGGBB\", alpha: 0..255, x, y}: the colour drawn at a point of the slide (the Eyedropper)",
+    "shortcut": ""
+  },
+  {
+    "id": "file.close",
+    "label": "Close",
+    "location": "File",
+    "params": "{}",
+    "shortcut": "Cmd+W"
+  },
+  {
+    "id": "file.properties",
+    "label": "Properties",
+    "location": "File",
+    "params": "{title?, subject?, author?, keywords?, comments?, category?, company?} → properties",
+    "shortcut": ""
+  },
+  {
+    "id": "file.recovery.save",
+    "label": "Save AutoRecover Information",
+    "location": "",
+    "params": "{} → {written}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.recovery.list",
+    "label": "Recovered Presentations",
+    "location": "",
+    "params": "{} → [{uid, path, title, saved}]",
+    "shortcut": ""
+  },
+  {
+    "id": "file.recovery.open",
+    "label": "Open Recovered Presentations",
+    "location": "",
+    "params": "{} → {opened: [document index]}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.recovery.discard",
+    "label": "Discard Recovered Presentations",
+    "location": "",
+    "params": "{uid?: one entry (else all)}",
+    "shortcut": ""
+  },
+  {
+    "id": "file.revert",
+    "label": "Revert",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "window.next",
+    "label": "Next Window",
+    "location": "Window",
+    "params": "{index?}",
+    "shortcut": "Cmd+`"
+  },
+  {
+    "id": "edit.undo",
+    "label": "Undo",
+    "location": "Edit",
+    "params": "{}",
+    "shortcut": "Cmd+Z"
+  },
+  {
+    "id": "edit.redo",
+    "label": "Redo",
+    "location": "Edit",
+    "params": "{}",
+    "shortcut": "Cmd+Y"
+  },
+  {
+    "id": "edit.cut",
+    "label": "Cut",
+    "location": "Home > Clipboard",
+    "params": "{scope?: slides} → {text, html?}",
+    "shortcut": "Cmd+X"
+  },
+  {
+    "id": "edit.copy",
+    "label": "Copy",
+    "location": "Home > Clipboard",
+    "params": "{scope?: slides} → {text, html?}",
+    "shortcut": "Cmd+C"
+  },
+  {
+    "id": "edit.paste",
+    "label": "Paste",
+    "location": "Home > Clipboard",
+    "params": "{text?: plain text to paste, html?: rich text from another app, scope?: slides}",
+    "shortcut": "Cmd+V"
+  },
+  {
+    "id": "edit.pasteSpecial",
+    "label": "Paste Special",
+    "location": "Home > Clipboard",
+    "params": "{as: destinationTheme|keepSource|picture|text} — Use Destination Theme, Keep Source Formatting, Picture (PNG), Keep Text Only",
+    "shortcut": ""
+  },
+  {
+    "id": "edit.pasteText",
+    "label": "Paste and Match Formatting",
+    "location": "Edit",
+    "params": "{text?}",
+    "shortcut": "Cmd+Shift+V"
+  },
+  {
+    "id": "edit.duplicate",
+    "label": "Duplicate",
+    "location": "Edit",
+    "params": "{ids?}",
+    "shortcut": "Cmd+D"
+  },
+  {
+    "id": "edit.delete",
+    "label": "Delete",
+    "location": "Edit",
+    "params": "{ids?, scope?: slides}",
+    "shortcut": "Delete"
+  },
+  {
+    "id": "edit.selectAll",
+    "label": "Select All",
+    "location": "Edit",
+    "params": "{scope?: slides}",
+    "shortcut": "Cmd+A"
+  },
+  {
+    "id": "edit.deselect",
+    "label": "Deselect",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Escape"
+  },
+  {
+    "id": "edit.select",
+    "label": "Select Objects",
+    "location": "",
+    "params": "{ids: [id], add?: bool, toggle?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.new",
+    "label": "New Slide",
+    "location": "Home > Slides",
+    "params": "{layout?: layout name or kind (title, titleAndContent, sectionHeader, twoContent, comparison, titleOnly, blank, contentWithCaption, pictureWithCaption), at?: index, title?: text, body?: text}",
+    "shortcut": "Cmd+Shift+N"
+  },
+  {
+    "id": "slide.duplicate",
+    "label": "Duplicate Slide",
+    "location": "Insert",
+    "params": "{index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.delete",
+    "label": "Delete Slide",
+    "location": "Edit",
+    "params": "{index?, ids?: [slide id]}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.move",
+    "label": "Move Slide",
+    "location": "",
+    "params": "{from?: index, ids?: [slide id], to: index (counted without the moved slides)}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.go",
+    "label": "Go to Slide",
+    "location": "",
+    "params": "{index} | {id}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.next",
+    "label": "Next Slide",
+    "location": "",
+    "params": "{}",
+    "shortcut": "PageDown"
+  },
+  {
+    "id": "slide.previous",
+    "label": "Previous Slide",
+    "location": "",
+    "params": "{}",
+    "shortcut": "PageUp"
+  },
+  {
+    "id": "slide.first",
+    "label": "First Slide",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Home"
+  },
+  {
+    "id": "slide.last",
+    "label": "Last Slide",
+    "location": "",
+    "params": "{}",
+    "shortcut": "End"
+  },
+  {
+    "id": "slide.selectRange",
+    "label": "Select Slide Range",
+    "location": "",
+    "params": "{to: index, from?: index (default the current slide), add?: bool (keep the slides already selected)}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.selectSlides",
+    "label": "Select Slides",
+    "location": "",
+    "params": "{ids?: [slide id], indices?: [index], add?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.hide",
+    "label": "Hide Slide",
+    "location": "Slide Show > Set Up",
+    "params": "{index?, hidden?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.layout",
+    "label": "Layout",
+    "location": "Home > Slides",
+    "params": "{layout: name or kind, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.reset",
+    "label": "Reset",
+    "location": "Home > Slides",
+    "params": "{index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.notes",
+    "label": "Notes",
+    "location": "View",
+    "params": "{text | body: formatted notes (as in slide.inspect's notesBody), index?} (text as typed: untouched notes keep their formatting)",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.rename",
+    "label": "Rename Slide",
+    "location": "",
+    "params": "{name, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "section.add",
+    "label": "Add Section",
+    "location": "Home > Slides > Section",
+    "params": "{name?, at?: slide index}",
+    "shortcut": ""
+  },
+  {
+    "id": "section.rename",
+    "label": "Rename Section",
+    "location": "Home > Slides > Section",
+    "params": "{index, name}",
+    "shortcut": ""
+  },
+  {
+    "id": "section.remove",
+    "label": "Remove Section",
+    "location": "Home > Slides > Section",
+    "params": "{index, slides?: bool (also delete its slides)}",
+    "shortcut": ""
+  },
+  {
+    "id": "section.removeAll",
+    "label": "Remove All Sections",
+    "location": "Home > Slides > Section",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "section.move",
+    "label": "Move Section",
+    "location": "",
+    "params": "{index, to}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.fromOutline",
+    "label": "Slides from Outline…",
+    "location": "Insert > Slides From",
+    "params": "{text, markdown?: bool (headings are slides, list items bullets)}",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.reuseList",
+    "label": "List Slides to Reuse",
+    "location": "",
+    "params": "{path | data: base64, name?} → {name, slides: [{index, title, hidden}]}: the slides of another presentation, for choosing which ones `slide.reuse` brings in",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.reuse",
+    "label": "Reuse Slides…",
+    "location": "Home > Slides > New Slide",
+    "params": "{path? | data: base64, name?, slides?: [index] (0-based, default all), keepFormatting?: bool (default false: use the destination theme), at?: index (default after the current slide)}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.insert",
+    "label": "Shapes",
+    "location": "Insert > Illustrations",
+    "params": "{preset: rect|roundRect|ellipse|triangle|rightArrow|star5|… (see shape.presets), rect: [x,y,w,h] pt, text?: string}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.icon",
+    "label": "Icons",
+    "location": "Insert > Illustrations",
+    "params": "{name: star|arrow-right|… (see insert.icons), rect?: [x,y,w,h]}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.icons",
+    "label": "Icon Gallery",
+    "location": "",
+    "params": "{} → [{name, label, category}]",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.presets",
+    "label": "Shape Gallery",
+    "location": "",
+    "params": "{} → [{name, label, category}]",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.textBox",
+    "label": "Text Box",
+    "location": "Insert > Text",
+    "params": "{rect?: [x,y,w,h], text?: string}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.picture",
+    "label": "Picture from File…",
+    "location": "Insert > Images > Pictures",
+    "params": "{path? | data: base64, name?, rect?: [x,y,w,h]}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.photoAlbum",
+    "label": "Photo Album…",
+    "location": "Insert > Images",
+    "params": "{pictures?: [{path?|data: base64, name?, rot?: deg, brightness?: -1..1, contrast?: -1..1} | {text}], layout?: fit|1|2|4|1title|2title|4title, frame?: none|rect|rounded|simple, captions?: bool, grayscale?: bool, theme?: name} — omit pictures to open the dialog",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.photoAlbumEdit",
+    "label": "Edit Photo Album…",
+    "location": "Insert > Images",
+    "params": "{album?: id, pictures?: same as insert.photoAlbum, layout?, frame?, captions?, grayscale?, theme?} — omit pictures to reopen the dialog on the current album",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.table",
+    "label": "Table…",
+    "location": "Insert > Tables",
+    "params": "{rows, cols, rect?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.chart",
+    "label": "Chart…",
+    "location": "Insert > Illustrations",
+    "params": "{type?: column|bar|line|pie|doughnut|area|scatter|stackedColumn|…, rect?, categories?: [..], series?: [{name, values}]}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.audio",
+    "label": "Audio from File…",
+    "location": "Insert > Media > Audio",
+    "params": "{path? | data: base64, name?, rect?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.video",
+    "label": "Video from File…",
+    "location": "Insert > Media > Video",
+    "params": "{path? | data: base64, name?, rect?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.wordArt",
+    "label": "Decorative Text",
+    "location": "Insert > Text",
+    "params": "{text?, style?: 0..}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.slideNumber",
+    "label": "Slide Number",
+    "location": "Insert > Text",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.dateTime",
+    "label": "Date & Time",
+    "location": "Insert > Text",
+    "params": "{format?: datetime1..datetime13, update?: bool, language?: en-US|en-GB|fr-FR|ja-JP|sv-SE} — no keys opens the dialog; in the Handout or Notes Master view it fills the selected date placeholder (else the master's own) and answers where: \"master\"",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.symbol",
+    "label": "Symbol",
+    "location": "Insert > Symbols",
+    "params": "{text: character(s)}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.action",
+    "label": "Action Settings",
+    "location": "Insert > Links",
+    "params": "{on?: click|hover, action: none|next|previous|first|last|lastViewed|endShow|playMedia|slide|url|customShow|program, slide?: index, url?, show?: custom show name, path?, highlight?: bool, tooltip?, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.hyperlink",
+    "label": "Link",
+    "location": "Insert > Links",
+    "params": "{url? | slide?: index, tooltip?, text?: shown when nothing is selected, highlightClick?, ids?}",
+    "shortcut": "Cmd+K"
+  },
+  {
+    "id": "chart.type",
+    "label": "Change Chart Type",
+    "location": "Chart Design > Type",
+    "params": "{type, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.data",
+    "label": "Edit Data",
+    "location": "Chart Design > Data",
+    "params": "{categories?: [..], levels?: [[..]] (outer category levels, innermost first), series?: [{name, values}], id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "chart.options",
+    "label": "Chart Elements",
+    "location": "Chart Design > Chart Layouts",
+    "params": "{title?: string|null, legend?: b|t|l|r|null, dataLabels?: bool, gridlines?: bool, palette?, binCount?: n|null, binSize?: n|null, subtotals?: [point index], quartiles?: exclusive|inclusive, upDownBars?: bool, textColor?: #RRGGBB|accent1..6|tx1…|null (title, axes, legend and labels; null for PowerPoint's default: the theme's text colour at 65 % plus 35 %, 595959 on a light theme), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.smartArt",
+    "label": "Diagram",
+    "location": "Insert > Illustrations",
+    "params": "{kind: list|process|cycle|hierarchy|pyramid|matrix, items?: [text] (leading tabs = sub-points), nodes?: [{text, level}]} → {id}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.actionButton",
+    "label": "Action Buttons",
+    "location": "Insert > Illustrations",
+    "params": "{kind: back|forward|beginning|end|home|information|return|movie|document|sound|help|custom, rect?}",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.nodes",
+    "label": "Text Pane",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?} → {id, kind, nodes: [{text, level}]} (id: the Diagram group or one of its shapes; default the selection)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.setNodes",
+    "label": "Edit Diagram Text",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, nodes?: [{text, level}], lines?: [string] (leading tabs set the level), index?, text?, title?} (index + text edits one node; title: its Name and Title box)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.addNode",
+    "label": "Add Shape",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, index?, position?: after|before|below|above|assistant, text?} → {index} (default: after the last node)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.removeNode",
+    "label": "Remove Shape",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, index} (its sub-points move up one level)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.promote",
+    "label": "Promote",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, index}",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.demote",
+    "label": "Demote",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, index}",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.layout",
+    "label": "Change Layout",
+    "location": "Diagram Design > Layouts",
+    "params": "{id?, kind: list|blockList|hBulletList|process|chevron|verticalProcess|stepUp|cycle|blockCycle|radial|hierarchy|pyramid|invertedPyramid|matrix|titledMatrix|pictureList|pictureCaption|pictureProcess|pictureHList|timeline|venn|target|textCycle|continuousCycle|horizontalHierarchy|gridMatrix|gear|funnel|segmentedCycle|multidirectionalCycle|orgChart|halfCircleOrgChart|cycleMatrix|segmentedPyramid|pie|nameTitleOrgChart|verticalBoxList|trapezoidList|tableList|accentProcess|continuousBlockProcess|bendingProcess|linearVenn|stackedVenn|nestedTarget}",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.fromText",
+    "label": "Convert to Diagram",
+    "location": "Home > Paragraph",
+    "params": "{id?, kind?} → {id} (a text box or placeholder becomes a Diagram graphic in its place: one node per paragraph, indent levels kept)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.toText",
+    "label": "Convert to Text",
+    "location": "Diagram Design > Reset",
+    "params": "{id?} → {id} (the graphic becomes a text box of its outline, bulleted by level)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.toShapes",
+    "label": "Convert to Shapes",
+    "location": "Diagram Design > Reset",
+    "params": "{id?} (the graphic becomes a plain group of its shapes; the outline is dropped)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.picture",
+    "label": "Insert Picture in Diagram",
+    "location": "Diagram Design > Create Graphic",
+    "params": "{id?, index, data?: base64 | path?: string | reset?: bool} (the node's picture placeholder in picture layouts)",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.style",
+    "label": "Diagram Styles",
+    "location": "Diagram Design > Diagram Styles",
+    "params": "{id?, style: flat|subtle|intense|outline|polished|inset|cartoon|powder|brick}",
+    "shortcut": ""
+  },
+  {
+    "id": "smartArt.colors",
+    "label": "Change Colors",
+    "location": "Diagram Design > Diagram Styles",
+    "params": "{id?, colors: colorful|range23|range34|range45|range56|accent1|…|accent6|accent1Grad|…|accent6Grad}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.connect",
+    "label": "Connect Shapes",
+    "location": "",
+    "params": "{from: shape id, to: shape id, fromSite?, toSite?: site index (default: the closest pair), id?: existing line to glue (else a new connector), preset?: straightConnector1|bentConnector3|curvedConnector3} → {id}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.freeform",
+    "label": "Freeform",
+    "location": "Insert > Shapes",
+    "params": "{points: [[x, y], …] slide pt (≥ 2), closed?: bool (filled shape), smooth?: bool (curve through the points)} → {id}",
+    "shortcut": ""
+  },
+  {
+    "id": "draw.inkToShape",
+    "label": "Ink to Shape",
+    "location": "Draw > Convert",
+    "params": "{} → {shapes: [ids], kept: n} turns recognisable ink strokes on the slide into lines, rectangles, ellipses and triangles",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.sites",
+    "label": "Connection Sites",
+    "location": "",
+    "params": "{id} → [[x, y]] connection sites in slide points",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.move",
+    "label": "Move",
+    "location": "",
+    "params": "{dx?: pt (relative), dy?: pt (relative), ids?} | {x?: pt (absolute), y?: pt (absolute), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.resize",
+    "label": "Size",
+    "location": "Shape Format > Size",
+    "params": "{w?: pt, h?: pt, lockAspect?: bool, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.setBounds",
+    "label": "Position and Size",
+    "location": "",
+    "params": "{x, y, w, h, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.rotate",
+    "label": "Rotation",
+    "location": "Shape Format > Arrange > Rotate",
+    "params": "{deg?: absolute, by?: relative, ids?, gesture?: move|end}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.sizePosition",
+    "label": "Size and Position…",
+    "location": "Shape Format > Size",
+    "params": "{x?, y?: pt, w?, h?: pt, rot?: deg, scaleW?, scaleH?: percent of the current size (100 = unchanged), lockAspect?: bool, ids?} — with none of those keys, opens the dialog",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.flip",
+    "label": "Flip",
+    "location": "Shape Format > Arrange > Rotate",
+    "params": "{axis: horizontal|vertical, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.adjust",
+    "label": "Adjust Shape",
+    "location": "",
+    "params": "{index, value (file units), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.change",
+    "label": "Change Shape",
+    "location": "Shape Format > Insert Shapes > Edit Shape",
+    "params": "{preset, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.smoothCorners",
+    "label": "Smooth Corners",
+    "location": "Shape Format > Insert Shapes > Edit Shape",
+    "params": "{smoothing: 0..100 (%), radius?: pt (default: the rounded rectangle's own), ids?} → rectangle outline with smoothed (squircle) corners",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.fill",
+    "label": "Shape Fill",
+    "location": "Shape Format > Shape Styles",
+    "params": "{color? | none?: true | background?: true (the slide background shows through; shapes and text boxes only) | gradient?: {stops: [[pos 0..1, color]], kind?: linear|radial|rectangular|path, angle?: deg (linear), focus?: [l, t, r, b] fractions (radial, rectangular and path: where the first stop sits), rotateWithShape?: bool (false keeps linear and radial gradients upright on the slide; rectangular and path gradients turn with the shape when drawn)} | picture?: base64 | pattern?: {preset, fg, bg} | transparency?: 0..1 | reset?: true, ids?}; pictureProps?: {tile?: bool, offsetX?, offsetY?: pt, scaleX?, scaleY?: 0..10, align?: tl|t|tr|l|ctr|r|bl|b|br, mirror?: none|x|y|xy, stretch?: [l, t, r, b] fractions, rotateWithShape?: bool} adjusts a picture fill; a group also formats its members",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.line",
+    "label": "Shape Outline",
+    "location": "Shape Format > Shape Styles",
+    "params": "{color?, none?, width?: pt, dash?: solid|dot|dash|lgDash|dashDot|sysDot|sysDash, cap?: flat|round|square, join?: round|bevel|miter, compound?: single|double|thickThin|thinThick|triple, head?: none|triangle|stealth|diamond|oval|arrow, tail?, headSize?: sm|med|lg, tailSize?, reset?, ids?}; a group also formats its members",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.effects",
+    "label": "Shape Effects",
+    "location": "Shape Format > Shape Styles",
+    "params": "{shadow?: none|outer|inner|perspective|{color, blur, dist, dir}, glow?: none|{color, radius}, softEdges?: pt, reflection?: none|tight|half|full, bevel?: none|circle|…, threeD?: {camera?: preset, rotX?, rotY?, rotZ?: deg, z?: pt, bevelTop?, bevelBottom?: none|circle|…, bevelTopW?, bevelTopH?, bevelBottomW?, bevelBottomH?, depth?, contour?: pt, material?, lighting?, reset?: true}, shadowProps?: {color?, transparency?: 0..1, size?: 0.01..2 (1 = 100%), blur?: pt, dist?: pt, dir?: deg}, glowProps?: {color?, transparency?, radius?: pt}, reflectionProps?: {transparency?, size?: 0..1, dist?: pt, blur?: pt}, reset?, ids?} (the *Props keys adjust the current effect, adding a default one when there is none)",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.quickStyle",
+    "label": "Quick Styles",
+    "location": "Home > Drawing",
+    "params": "{index: 0..41 (theme style row×accent), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.rename",
+    "label": "Rename",
+    "location": "Selection Pane",
+    "params": "{name, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.altText",
+    "label": "Alt Text",
+    "location": "Shape Format > Accessibility",
+    "params": "{text, decorative?: bool, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.visible",
+    "label": "Show/Hide",
+    "location": "Selection Pane",
+    "params": "{visible?: bool, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.lock",
+    "label": "Lock",
+    "location": "Selection Pane",
+    "params": "{locked?: bool (default: toggle), ids?} (a group locks or unlocks with everything in it)",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.setDefault",
+    "label": "Set as Default Shape",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.crop",
+    "label": "Crop",
+    "location": "Picture Format > Size",
+    "params": "{left?: fraction 0..1, top?: fraction 0..1, right?: fraction 0..1, bottom?: fraction 0..1, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.adjust",
+    "label": "Corrections",
+    "location": "Picture Format > Adjust",
+    "params": "{brightness?: -1..1, contrast?: -1..1, saturation?: 0..4, grayscale?: bool, transparency?: 0..1, reset?: bool, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.reset",
+    "label": "Reset Picture",
+    "location": "Picture Format > Adjust",
+    "params": "{ids?} (discards the picture's formatting: adjustments, artistic effect, crop, transparency, picture-style effects and outline; the frame shape from Change Shape or Crop to Shape, the size and the position stay)",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.change",
+    "label": "Change Picture",
+    "location": "Picture Format > Adjust",
+    "params": "{path? | data: base64, name?, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.options",
+    "label": "Playback",
+    "location": "Playback",
+    "params": "{autoplay?, loop?, rewind?, acrossSlides?, hide?, fullScreen?, volume?: 0..1, trimStart?: ms, trimEnd?: ms, fadeIn?: ms, fadeOut?: ms, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.removeBackground",
+    "label": "Remove Background",
+    "location": "Picture Format > Adjust",
+    "params": "{tolerance?: 0..100 (how different a colour may be from the edge's, default 20), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.style",
+    "label": "Picture Styles",
+    "location": "Picture Format > Picture Styles",
+    "params": "{style: simpleFrameWhite|dropShadowRectangle|softEdgeOval|… | none (see picture.styles), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.styles",
+    "label": "Picture Style Gallery",
+    "location": "",
+    "params": "{} → [{id, label}]",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.recolor",
+    "label": "Recolor",
+    "location": "Picture Format > Adjust > Color",
+    "params": "{preset: none|grayscale|sepia|washout|bw25|bw50|bw75|accent1Dark…accent6Dark|accent1Light…accent6Light|tx2Dark|tx2Light (see picture.recolors), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.recolors",
+    "label": "Recolor Gallery",
+    "location": "",
+    "params": "{} → [{id, label}]",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.transparentColor",
+    "label": "Set Transparent Color",
+    "location": "Picture Format > Adjust > Color",
+    "params": "{color: #RRGGBB | at: [x, y] | none: true, ids?} (pixels of that colour become transparent; `at` takes the colour of the picture's own pixel under that slide point, as a click does in PowerPoint)",
+    "shortcut": ""
+  },
+  {
+    "id": "guide.add",
+    "label": "Add Guide",
+    "location": "View > Show > Guides",
+    "params": "{vertical: bool, pos?: pt (default: the slide's centre)} → {index}. `defaults: true` adds the two centre guides when there are none",
+    "shortcut": ""
+  },
+  {
+    "id": "guide.move",
+    "label": "Move Guide",
+    "location": "",
+    "params": "{index, pos: pt}",
+    "shortcut": ""
+  },
+  {
+    "id": "guide.delete",
+    "label": "Delete Guide",
+    "location": "",
+    "params": "{index}",
+    "shortcut": ""
+  },
+  {
+    "id": "guide.list",
+    "label": "Guides",
+    "location": "",
+    "params": "{} → [{vertical, pos}]",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.bringToFront",
+    "label": "Bring to Front",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+Shift+]"
+  },
+  {
+    "id": "arrange.bringForward",
+    "label": "Bring Forward",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+]"
+  },
+  {
+    "id": "arrange.sendBackward",
+    "label": "Send Backward",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+["
+  },
+  {
+    "id": "arrange.sendToBack",
+    "label": "Send to Back",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+Shift+["
+  },
+  {
+    "id": "arrange.reorder",
+    "label": "Reorder Objects",
+    "location": "Arrange",
+    "params": "{id, index: position among its siblings (0 = back; a group's child stays in its group)} → {index}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.group",
+    "label": "Group",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+Alt+G"
+  },
+  {
+    "id": "arrange.ungroup",
+    "label": "Ungroup",
+    "location": "Arrange",
+    "params": "{ids?}",
+    "shortcut": "Cmd+Alt+Shift+G"
+  },
+  {
+    "id": "arrange.regroup",
+    "label": "Regroup",
+    "location": "Arrange",
+    "params": "{}",
+    "shortcut": "Cmd+Alt+J"
+  },
+  {
+    "id": "arrange.align",
+    "label": "Align",
+    "location": "Arrange > Align or Distribute",
+    "params": "{edge: left|center|right|top|middle|bottom, to?: slide|selection (default: slide for one object), ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.distribute",
+    "label": "Distribute",
+    "location": "Arrange > Align or Distribute",
+    "params": "{dir: horizontal|vertical, to?: slide|selection, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.rotateLeft",
+    "label": "Rotate Left 90°",
+    "location": "Arrange > Rotate or Flip",
+    "params": "{ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.rotateRight",
+    "label": "Rotate Right 90°",
+    "location": "Arrange > Rotate or Flip",
+    "params": "{ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.flipHorizontal",
+    "label": "Flip Horizontal",
+    "location": "Arrange > Rotate or Flip",
+    "params": "{ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.flipVertical",
+    "label": "Flip Vertical",
+    "location": "Arrange > Rotate or Flip",
+    "params": "{ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "arrange.nudge",
+    "label": "Nudge",
+    "location": "",
+    "params": "{dx, dy, ids?} (arrow keys: 6 pt, with Alt 1 pt)",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.select",
+    "label": "Select",
+    "location": "Selection Pane",
+    "params": "{ids | id, toggle?: bool (Ctrl+click), add?: bool} → {selected}: objects in groups too; a hidden object picked from the list is shown",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.showAll",
+    "label": "Show All",
+    "location": "Selection Pane",
+    "params": "{} shows every object on the slide, inside groups too",
+    "shortcut": ""
+  },
+  {
+    "id": "selection.hideAll",
+    "label": "Hide All",
+    "location": "Selection Pane",
+    "params": "{} hides every top-level object on the slide",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.merge",
+    "label": "Merge Shapes",
+    "location": "Shape Format > Insert Shapes > Merge Shapes",
+    "params": "{op: union|combine|fragment|intersect|subtract, ids?: shapes in selection order (the first one's formatting is kept)} → {ids} (a shape inside a group is refused; ungroup it first)",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.editPoints",
+    "label": "Edit Points",
+    "location": "Shape Format > Insert Shapes > Edit Shape",
+    "params": "{on?: bool (default: toggle), id?} — enter or leave Edit Points for one selected shape; entering turns a preset into a freeform",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.points",
+    "label": "Points",
+    "location": "",
+    "params": "{id?} → {id, paths: [[[x, y] slide pt]], types: [[smooth|straight|corner]], segments: [[straight|curved|null]]} vertices of a freeform and the segment ending at each",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.movePoint",
+    "label": "Move Point",
+    "location": "",
+    "params": "{path?: 0, index, x, y: slide pt, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.addPoint",
+    "label": "Add Point",
+    "location": "",
+    "params": "{path?: 0, segment: index of the vertex ending it, t?: 0..1 (0.5), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.pointType",
+    "label": "Point Type",
+    "location": "",
+    "params": "{path?: 0, index, type: smooth|straight|corner, id?} — smooth: handles in line and equal; straight: in line; corner: independent",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.moveHandle",
+    "label": "Move Handle",
+    "location": "",
+    "params": "{path?: 0, index, side: in|out, x, y: slide pt, type?: smooth|straight|corner (default: read from the handles), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.deletePoint",
+    "label": "Delete Point",
+    "location": "",
+    "params": "{path?: 0, index, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.deleteSegment",
+    "label": "Delete Segment",
+    "location": "",
+    "params": "{path?: 0, segment: index of the vertex ending it, id?}: removes a segment of a closed outline, which opens there; it starts at the segment's end and ends at its start",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.segmentType",
+    "label": "Segment Type",
+    "location": "",
+    "params": "{path?: 0, segment: index of the vertex ending it, type: straight|curved, id?} — straight drops the segment's handles; curved gives it handles at its thirds",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.openPath",
+    "label": "Open Path",
+    "location": "",
+    "params": "{path?: 0, index, id?} — break a closed outline at a point, which becomes its two ends",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.closePath",
+    "label": "Close Path",
+    "location": "",
+    "params": "{path?: 0, index: any point of the open outline, id?} — join its ends with a straight segment (one point when they meet)",
+    "shortcut": ""
+  },
+  {
+    "id": "font.used",
+    "label": "Fonts in Presentation",
+    "location": "",
+    "params": "{} → [family] (theme fonts resolved)",
+    "shortcut": ""
+  },
+  {
+    "id": "font.replace",
+    "label": "Replace Fonts",
+    "location": "Home > Editing > Replace",
+    "params": "{from, to} — every explicit use of family `from`, theme fonts included → {replaced}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.edit",
+    "label": "Edit Text",
+    "location": "",
+    "params": "{id?, at?: [paragraph, char], end?: bool, cell?: [row, col], notes?: bool}",
+    "shortcut": "Enter"
+  },
+  {
+    "id": "text.exit",
+    "label": "Stop Editing Text",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.autocorrect",
+    "label": "AutoCorrect Options",
+    "location": "Tools",
+    "params": "{on?, twoInitials?, sentenceCaps?, days?, capsLock?, fractions?, ordinals?, lists?: bool, add?: [from, to], remove?: from} → the options and the replacement list",
+    "shortcut": ""
+  },
+  {
+    "id": "text.insert",
+    "label": "Type Text",
+    "location": "",
+    "params": "{text} (\\n = new paragraph, \\u000b = line break)",
+    "shortcut": ""
+  },
+  {
+    "id": "text.compose",
+    "label": "Compose Text",
+    "location": "",
+    "params": "{text, active?: [start, end]} — an input method's composition (preedit) at the insertion point; empty text cancels it",
+    "shortcut": ""
+  },
+  {
+    "id": "text.commit",
+    "label": "Commit Composition",
+    "location": "",
+    "params": "{text} — the input method's result replaces its composition, as one undo step",
+    "shortcut": ""
+  },
+  {
+    "id": "text.delete",
+    "label": "Delete Text",
+    "location": "",
+    "params": "{dir?: backward|forward|wordBackward|wordForward} — the word directions are Ctrl+Backspace/Delete: they work from the start of a selection without deleting it",
+    "shortcut": "Backspace"
+  },
+  {
+    "id": "text.deleteSurrounding",
+    "label": "Delete Surrounding Text",
+    "location": "",
+    "params": "{before, after, bytes?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.move",
+    "label": "Move Insertion Point",
+    "location": "",
+    "params": "{to: left|right|up|down|wordLeft|wordRight|lineStart|lineEnd|paraStart|paraEnd|paraUp|paraDown|start|end, extend?: bool} — left/right are on screen: in a right-to-left paragraph left goes forward",
+    "shortcut": ""
+  },
+  {
+    "id": "text.select",
+    "label": "Select Text",
+    "location": "",
+    "params": "{anchor: [p, c], caret: [p, c]}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.selectAll",
+    "label": "Select All Text",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.selectWord",
+    "label": "Select Word",
+    "location": "",
+    "params": "{at?: [p, c]}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.selectParagraph",
+    "label": "Select Paragraph",
+    "location": "",
+    "params": "{at?: [p, c]}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.set",
+    "label": "Set Text",
+    "location": "",
+    "params": "{id?, text, cell?: [r, c]} — replaces the whole text, keeping the first run's formatting",
+    "shortcut": ""
+  },
+  {
+    "id": "text.get",
+    "label": "Get Text",
+    "location": "",
+    "params": "{id?} → {text, paragraphs}",
+    "shortcut": ""
+  },
+  {
+    "id": "font.add",
+    "label": "Add Font",
+    "location": "",
+    "params": "{data: base64 TTF/OTF/TTC} → {faces} added for this session",
+    "shortcut": ""
+  },
+  {
+    "id": "font.rescan",
+    "label": "Rescan Installed Fonts",
+    "location": "Home > Font",
+    "params": "{} → {faces, families} (fonts installed since start-up)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.bold",
+    "label": "Bold",
+    "location": "Home > Font",
+    "params": "{on?: bool}",
+    "shortcut": "Cmd+B"
+  },
+  {
+    "id": "format.italic",
+    "label": "Italic",
+    "location": "Home > Font",
+    "params": "{on?: bool}",
+    "shortcut": "Cmd+I"
+  },
+  {
+    "id": "format.underline",
+    "label": "Underline",
+    "location": "Home > Font",
+    "params": "{on?: bool, style?: sng|dbl|heavy|dotted|dash|wavy}",
+    "shortcut": "Cmd+U"
+  },
+  {
+    "id": "format.strikethrough",
+    "label": "Strikethrough",
+    "location": "Home > Font",
+    "params": "{on?: bool, double?: bool}",
+    "shortcut": "Cmd+Shift+X"
+  },
+  {
+    "id": "format.superscript",
+    "label": "Superscript",
+    "location": "Home > Font",
+    "params": "{on?: bool}",
+    "shortcut": "Cmd+Shift+="
+  },
+  {
+    "id": "format.subscript",
+    "label": "Subscript",
+    "location": "Home > Font",
+    "params": "{on?: bool}",
+    "shortcut": "Cmd+="
+  },
+  {
+    "id": "format.font",
+    "label": "Font",
+    "location": "Home > Font",
+    "params": "{family}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.size",
+    "label": "Font Size",
+    "location": "Home > Font",
+    "params": "{size: pt}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.grow",
+    "label": "Increase Font Size",
+    "location": "Home > Font",
+    "params": "{}",
+    "shortcut": "Cmd+Shift+."
+  },
+  {
+    "id": "format.shrink",
+    "label": "Decrease Font Size",
+    "location": "Home > Font",
+    "params": "{}",
+    "shortcut": "Cmd+Shift+,"
+  },
+  {
+    "id": "format.color",
+    "label": "Font Color",
+    "location": "Home > Font",
+    "params": "{color: #RRGGBB|accent1..6|tx1…|{scheme, lumMod…}}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.textTransparency",
+    "label": "Text Transparency",
+    "location": "Shape Format > Decorative Text Styles",
+    "params": "{value: 0..1} — 0 opaque, 1 invisible; keeps the text's colour (inherited colours included)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.language",
+    "label": "Language",
+    "location": "Review > Language",
+    "params": "{lang?, noProof?: bool} (proofing language of the selected text, and Do Not Check Spelling)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.languageAll",
+    "label": "Language for All Text",
+    "location": "Review > Language",
+    "params": "{lang?, noProof?: bool} (proofing language of every text in the presentation: slides, tables, notes, masters and layouts, and the default for new text; one undo step)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.highlight",
+    "label": "Text Highlight Color",
+    "location": "Home > Font",
+    "params": "{color? (absent = none)}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.case",
+    "label": "Change Case",
+    "location": "Home > Font",
+    "params": "{mode?: cycle|sentence|lower|upper|title|toggle} — cycle (Shift+F3, the default) goes lowercase → Capitalize Each Word → UPPERCASE; a caret in a word changes that word",
+    "shortcut": "Shift+F3"
+  },
+  {
+    "id": "format.caps",
+    "label": "Caps",
+    "location": "",
+    "params": "{caps: none|small|all}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.spacing",
+    "label": "Character Spacing",
+    "location": "Home > Font",
+    "params": "{pt} (veryTight -3, tight -1.5, normal 0, loose 3, veryLoose 6)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.clear",
+    "label": "Clear All Formatting",
+    "location": "Home > Font",
+    "params": "{}",
+    "shortcut": "Cmd+Space"
+  },
+  {
+    "id": "format.fontDialog",
+    "label": "Font…",
+    "location": "Home > Font",
+    "params": "{family?, size?: pt, bold?: bool, italic?: bool, underline?: none|sng|dbl|heavy|dotted|dash|wavy, color?, strike?: none|sng|dbl, baseline?: none|super|sub|<fraction>, caps?: none|small|all, spacing?: pt} — with none of these, opens the Font dialog",
+    "shortcut": "Cmd+T"
+  },
+  {
+    "id": "format.textShadow",
+    "label": "Text Shadow",
+    "location": "Home > Font",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.textOutline",
+    "label": "Text Outline",
+    "location": "Shape Format > Decorative Text Styles",
+    "params": "{color?, width?: pt} (no color = none)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.textWarp",
+    "label": "Text Transform",
+    "location": "Shape Format > Decorative Text Styles",
+    "params": "{preset: a prstTxWarp name or none, adj?: [finite raw guide values, at most 8]} — none clears the transform; omitted adj uses the preset's defaults",
+    "shortcut": ""
+  },
+  {
+    "id": "format.align",
+    "label": "Align",
+    "location": "Home > Paragraph",
+    "params": "{align: left|center|right|justify|justifyLow|distributed}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.rtl",
+    "label": "Right-to-Left Text Direction",
+    "location": "Home > Paragraph",
+    "params": "{on?: bool} (off = left-to-right; switching mirrors left/right alignment)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.alignLeft",
+    "label": "Align Left",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Cmd+L"
+  },
+  {
+    "id": "format.alignCenter",
+    "label": "Center",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Cmd+E"
+  },
+  {
+    "id": "format.alignRight",
+    "label": "Align Right",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Cmd+R"
+  },
+  {
+    "id": "format.justify",
+    "label": "Justify",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Cmd+J"
+  },
+  {
+    "id": "format.bullets",
+    "label": "Bullets",
+    "location": "Home > Paragraph",
+    "params": "{on?: bool, char?: •|○|■|□|◆|➢|✓|–, color?, size?: % of text}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.numbering",
+    "label": "Numbering",
+    "location": "Home > Paragraph",
+    "params": "{on?: bool, scheme?: arabicPeriod|arabicParenR|romanUcPeriod|romanLcPeriod|alphaUcPeriod|alphaLcParenR|alphaLcPeriod, start?: n (a numbered paragraph whose start differs from that of the last numbered paragraph at its level begins a new run of numbers at n, as PowerPoint's Start at does), color?, size?: % of text}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.indent",
+    "label": "Increase List Level",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Tab"
+  },
+  {
+    "id": "format.outdent",
+    "label": "Decrease List Level",
+    "location": "Home > Paragraph",
+    "params": "{}",
+    "shortcut": "Shift+Tab"
+  },
+  {
+    "id": "format.lineSpacing",
+    "label": "Line Spacing",
+    "location": "Home > Paragraph",
+    "params": "{lines?: 1.0|1.5|2.0…, pt?: exactly}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.paragraph",
+    "label": "Paragraph…",
+    "location": "Format",
+    "params": "{align?, indentLeft?: pt, indentFirst?: pt (negative = hanging), spaceBefore?: pt, spaceAfter?: pt, lineSpacing?: lines}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.ruler",
+    "label": "Ruler",
+    "location": "",
+    "params": "{} → {x, y, width, rotated, marginLeft, indent, tabs: [{pos, align}], defaultTab} for the paragraph with the caret (x, y: the text area's top-left in slide pt)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.paragraphDialog",
+    "label": "Paragraph…",
+    "location": "Home > Paragraph",
+    "params": "{align?: left|center|right|justify|justLow|distributed, indentLeft?: pt, indentRight?: pt, special?: none|first|hanging, specialBy?: pt, indentFirst?: pt, spaceBefore?: pt, spaceAfter?: pt, spaceBeforeKind?: pts|pct, spaceAfterKind?: pts|pct, lineSpacing?: lines, lineSpacingPt?: pt} — with none of these, opens the Paragraph dialog",
+    "shortcut": ""
+  },
+  {
+    "id": "format.tabs",
+    "label": "Tabs…",
+    "location": "Home > Paragraph",
+    "params": "{set?: [{pos, align?}] (replaces all), add?: {pos, align?: l|ctr|r|dec}, move?: {from, to}, remove?: pos, clear?: bool, defaultTab?: pt} on the selected paragraphs; with none of them, opens the Tabs dialog (pos in pt from the text area's left)",
+    "shortcut": ""
+  },
+  {
+    "id": "format.anchor",
+    "label": "Align Text",
+    "location": "Home > Paragraph",
+    "params": "{anchor: top|middle|bottom}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.direction",
+    "label": "Text Direction",
+    "location": "Home > Paragraph",
+    "params": "{dir: horizontal|rotate90|rotate270|stacked}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.columns",
+    "label": "Columns",
+    "location": "Home > Paragraph",
+    "params": "{count?: 1-16, spacing?: pt between columns}; a key left out keeps the shape's value, and with neither the Columns dialog opens",
+    "shortcut": ""
+  },
+  {
+    "id": "format.autofit",
+    "label": "Autofit",
+    "location": "Format Shape > Text Box",
+    "params": "{mode: none|shrink|resize}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.wrap",
+    "label": "Wrap Text in Shape",
+    "location": "Format Shape > Text Box",
+    "params": "{on: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.margins",
+    "label": "Text Box Margins",
+    "location": "Format Shape > Text Box",
+    "params": "{left?: pt, top?: pt, right?: pt, bottom?: pt}",
+    "shortcut": ""
+  },
+  {
+    "id": "format.painter",
+    "label": "Format Painter",
+    "location": "Home > Clipboard",
+    "params": "{sticky?: bool}",
+    "shortcut": "Cmd+Shift+C"
+  },
+  {
+    "id": "format.painterApply",
+    "label": "Paste Formatting",
+    "location": "",
+    "params": "{ids?}",
+    "shortcut": "Cmd+Shift+V"
+  },
+  {
+    "id": "format.state",
+    "label": "Formatting State",
+    "location": "",
+    "params": "{} → the effective formatting at the selection (font, size, bold, …)",
+    "shortcut": ""
+  },
+  {
+    "id": "design.theme",
+    "label": "Themes",
+    "location": "Design > Themes",
+    "params": "{name} (see design.themes)",
+    "shortcut": ""
+  },
+  {
+    "id": "design.browseTheme",
+    "label": "Browse for Themes…",
+    "location": "Design > Themes",
+    "params": "{path} | {name, data: base64} — apply a .pptx or .potx's slide master and layouts (slides move to the matching layouts), or a .thmx's theme",
+    "shortcut": ""
+  },
+  {
+    "id": "design.themes",
+    "label": "Theme Gallery",
+    "location": "",
+    "params": "{} → themes, colour schemes, font schemes and effect schemes",
+    "shortcut": ""
+  },
+  {
+    "id": "design.colors",
+    "label": "Colors",
+    "location": "Design > Variants",
+    "params": "{} opens Create New Theme Colors | {name} | {colors: {dk1|lt1|dk2|lt2|accent1..6|hlink|folHlink: #RRGGBB}}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.variant",
+    "label": "Variants",
+    "location": "Design > Variants",
+    "params": "{index: 0..3} (see design.variants)",
+    "shortcut": ""
+  },
+  {
+    "id": "design.variants",
+    "label": "Variant Gallery",
+    "location": "",
+    "params": "{} → the current theme's four colour variants and which is applied",
+    "shortcut": ""
+  },
+  {
+    "id": "design.fonts",
+    "label": "Fonts",
+    "location": "Design > Variants",
+    "params": "{} opens Create New Theme Fonts | {name} | {major, minor}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.effects",
+    "label": "Effects",
+    "location": "Design > Variants",
+    "params": "{name} (see design.themes)",
+    "shortcut": ""
+  },
+  {
+    "id": "design.background",
+    "label": "Format Background",
+    "location": "Design > Customize",
+    "params": "{color? | gradient? | picture?: base64 | pattern? | style?: 1..12 | reset?, all?: bool, index?, transparency?: 0..1, pictureProps?: {tile?, offsetX?, offsetY?: pt, scaleX?, scaleY?: 0.01..10, align?, mirror?, stretch?: [l,t,r,b], rotateWithShape?}, copy?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.hideBackgroundGraphics",
+    "label": "Hide Background Graphics",
+    "location": "Format Background",
+    "params": "{hide?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.slideSize",
+    "label": "Slide Size",
+    "location": "Design > Customize",
+    "params": "{preset: widescreen|standard|…, orientation?: portrait|landscape, scale?: maximize|ensureFit|none} | {w: pt, h: pt, orientation?: portrait|landscape, scale?: maximize|ensureFit|none}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.headerFooter",
+    "label": "Header and Footer…",
+    "location": "Insert > Text",
+    "params": "{date?: bool, dateText?: fixed text, slideNumber?: bool, footer?: bool, footerText?, hideOnTitle?: bool, all?: bool (default true)}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.slideMaster",
+    "label": "Slide Master",
+    "location": "View > Master Views",
+    "params": "{master?: index, layout?: index}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.handoutMaster",
+    "label": "Handout Master",
+    "location": "View > Master Views",
+    "params": "{} (creates the handout master with header, date, footer and page number if the deck has none)",
+    "shortcut": ""
+  },
+  {
+    "id": "handout.placeholders",
+    "label": "Handout Placeholders",
+    "location": "Handout Master > Placeholders",
+    "params": "{header?: bool, date?: bool, footer?: bool, pageNumber?: bool} (show or hide each)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.notesMaster",
+    "label": "Notes Master",
+    "location": "View > Master Views",
+    "params": "{} (creates the notes master with header, date, slide image, notes body, footer and page number if the deck has none)",
+    "shortcut": ""
+  },
+  {
+    "id": "notes.placeholders",
+    "label": "Notes Placeholders",
+    "location": "Notes Master > Placeholders",
+    "params": "{header?, date?, slideImage?, body?, footer?, pageNumber?: bool} (show or hide each)",
+    "shortcut": ""
+  },
+  {
+    "id": "view.closeMaster",
+    "label": "Close Master View",
+    "location": "Slide Master > Close",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.insertLayout",
+    "label": "Insert Layout",
+    "location": "Slide Master > Edit Master",
+    "params": "{name?}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.renameLayout",
+    "label": "Rename Layout",
+    "location": "Slide Master > Edit Master",
+    "params": "{name, master?, layout?}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.deleteLayout",
+    "label": "Delete Layout",
+    "location": "Slide Master > Edit Master",
+    "params": "{master?, layout?}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.insertPlaceholder",
+    "label": "Insert Placeholder",
+    "location": "Slide Master > Master Layout",
+    "params": "{kind: content|text|picture|chart|table|media, rect?: [x,y,w,h]}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.preserve",
+    "label": "Preserve",
+    "location": "Slide Master > Edit Master",
+    "params": "{preserve?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "master.placeholders",
+    "label": "Layout Placeholders",
+    "location": "Slide Master > Edit Master",
+    "params": "{title?: bool, footers?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "design.ideas",
+    "label": "Design Ideas",
+    "location": "",
+    "params": "{slide?} → [{id, label}] ideas for the slide",
+    "shortcut": ""
+  },
+  {
+    "id": "design.applyIdea",
+    "label": "Apply Design Idea",
+    "location": "Home > Designer",
+    "params": "{id, slide?}",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.set",
+    "label": "Transition",
+    "location": "Transitions > Transition to This Slide",
+    "params": "{kind: none|morph|fade|push|wipe|split|reveal|cut|randomBar|shape|uncover|cover|flash|… (transition.list), option?, duration?: ms, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.options",
+    "label": "Effect Options",
+    "location": "Transitions > Transition to This Slide",
+    "params": "{option, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.timing",
+    "label": "Timing",
+    "location": "Transitions > Timing",
+    "params": "{duration?: ms, onClick?: bool, after?: ms | null, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.sound",
+    "label": "Sound",
+    "location": "Transitions > Timing",
+    "params": "{builtin?: chime|click|camera|whoosh|drumRoll|laser | path? | data: base64, name?, none?: true (No Sound), stopPrevious?: true, loop?: bool (Loop Until Next Sound), index?} — the sound plays as the slide comes in",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.applyAll",
+    "label": "Apply To All",
+    "location": "Transitions > Timing",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "transition.list",
+    "label": "Transition Gallery",
+    "location": "",
+    "params": "{} → [{id, label, category, duration, options}]",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.set",
+    "label": "Animation Styles",
+    "location": "Animations > Animation",
+    "params": "{effect: fade|fly|zoom|wipe|appear|spin|pulse|fadeOut|lines|… (animation.list), class?: entrance|emphasis|exit|path, option?, path?: [[x,y],…] or OOXML string, closed?: bool, ids?} — replaces the shapes' animations. path (motion paths): points in slide points, as offsets from where the shape sits, or the OOXML path string (slide fractions) animation.get answers",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.add",
+    "label": "Add Animation",
+    "location": "Animations > Advanced Animation",
+    "params": "{effect, class?, option?, path?: [[x,y],…] or OOXML string, closed?: bool, start?: onClick|withPrevious|afterPrevious, duration?: ms, delay?: ms, ids?} → {count, path?}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.remove",
+    "label": "Remove Animation",
+    "location": "Animation Pane",
+    "params": "{index} | {ids? (all of the shapes' animations)}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.move",
+    "label": "Reorder Animation",
+    "location": "Animations > Timing",
+    "params": "{index, to}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.timing",
+    "label": "Timing",
+    "location": "Animations > Timing",
+    "params": "{index? (else selected shapes), start?: onClick|withPrevious|afterPrevious, duration?: ms, delay?: ms, repeat?: n, rewind?: bool, trigger?: shape id | null}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.options",
+    "label": "Effect Options",
+    "location": "Animations > Animation",
+    "params": "{option?, textBuild?: asOne|byParagraph|byWord|byLetter, path?: [[x,y],…] or OOXML string, closed?: bool, index?}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.clear",
+    "label": "Remove All Animations",
+    "location": "",
+    "params": "{index?: slide}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.painter",
+    "label": "Animation Painter",
+    "location": "Animations > Advanced Animation",
+    "params": "{sticky?: bool, id?}",
+    "shortcut": "Alt+Shift+C"
+  },
+  {
+    "id": "animation.painterApply",
+    "label": "Apply Animation",
+    "location": "",
+    "params": "{ids?}",
+    "shortcut": "Alt+Shift+V"
+  },
+  {
+    "id": "animation.list",
+    "label": "Animation Gallery",
+    "location": "",
+    "params": "{} → [{id, label, class, options}]",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.get",
+    "label": "Animations on Slide",
+    "location": "",
+    "params": "{slide?} → [animation]",
+    "shortcut": ""
+  },
+  {
+    "id": "table.insertRowAbove",
+    "label": "Insert Above",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{row?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.insertRowBelow",
+    "label": "Insert Below",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{row?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.insertColumnLeft",
+    "label": "Insert Left",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{col?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.insertColumnRight",
+    "label": "Insert Right",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{col?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.deleteRow",
+    "label": "Delete Rows",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{row?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.deleteColumn",
+    "label": "Delete Columns",
+    "location": "Table Layout > Rows & Columns",
+    "params": "{col?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.merge",
+    "label": "Merge Cells",
+    "location": "Table Layout > Merge",
+    "params": "{from: [r, c], to: [r, c], id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.split",
+    "label": "Split Cells",
+    "location": "Table Layout > Merge",
+    "params": "{cell?: [r, c] (else the edited cell), id?} | {row?: index, col?: index, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.style",
+    "label": "Table Styles",
+    "location": "Table Design > Table Styles",
+    "params": "{style: medium2-accent1|light1-accent2|dark1-tx1|grid|none…, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.options",
+    "label": "Table Style Options",
+    "location": "Table Design > Table Style Options",
+    "params": "{headerRow?: bool, totalRow?: bool, bandedRows?: bool, firstColumn?: bool, lastColumn?: bool, bandedColumns?: bool, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.cellFill",
+    "label": "Shading",
+    "location": "Table Design > Table Styles",
+    "params": "{color? | none?, cells?: [[r,c],…] (default: selected cells or all), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.borders",
+    "label": "Borders",
+    "location": "Table Design > Draw Borders",
+    "params": "{which: all|outside|inside|insideH|insideV|top|bottom|left|right|diagDown|diagUp|none, color?, width?: pt, dash?: solid|dash|dot…, cells?: [[r,c],…] (default: selected cells or all), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.cellMargins",
+    "label": "Cell Margins",
+    "location": "Table Layout > Alignment",
+    "params": "{preset?: normal|none|narrow|wide, left?, right?, top?, bottom?: pt, cells?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.cellAlign",
+    "label": "Align Cell Text",
+    "location": "Table Layout > Alignment",
+    "params": "{anchor?: top|middle|bottom (vertical; top when neither anchor nor align is given), align?: left|center|right|justify (horizontal, applied to every paragraph of the cells), cells?, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.distributeRows",
+    "label": "Distribute Rows",
+    "location": "Table Layout > Cell Size",
+    "params": "{id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.distributeColumns",
+    "label": "Distribute Columns",
+    "location": "Table Layout > Cell Size",
+    "params": "{id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.columnWidth",
+    "label": "Width",
+    "location": "Table Layout > Cell Size",
+    "params": "{col, width: pt, keepTotal?: bool (the next column absorbs the change), id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.rowHeight",
+    "label": "Height",
+    "location": "Table Layout > Cell Size",
+    "params": "{row, height: pt, id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "table.drawLine",
+    "label": "Draw Table",
+    "location": "Table Design > Draw Borders",
+    "params": "{from: [x, y], to: [x, y] slide pt, id?: table (default: the one under `from`)} splits the cells the line crosses",
+    "shortcut": ""
+  },
+  {
+    "id": "table.eraseLine",
+    "label": "Table Eraser",
+    "location": "Table Design > Draw Borders",
+    "params": "{at: [x, y] slide pt, id?, tol?: pt (default 6)} merges the two cells on either side of the nearest border",
+    "shortcut": ""
+  },
+  {
+    "id": "table.selectCells",
+    "label": "Select Cells",
+    "location": "",
+    "params": "{from: [r,c], to: [r,c], id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "text.find",
+    "label": "Find",
+    "location": "Home > Editing",
+    "params": "{text, matchCase?: bool, wholeWords?: bool} → [{slide, shape (null = notes), cell?: [row, col], para, start, end}] (char offsets in the paragraph)",
+    "shortcut": ""
+  },
+  {
+    "id": "text.replace",
+    "label": "Replace",
+    "location": "Home > Editing",
+    "params": "{text, with, matchCase?, wholeWords?, at?: a text.find match (replace just that one; default: replace all)} → {replaced}",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.add",
+    "label": "New Comment",
+    "location": "Review > Comments",
+    "params": "{text, x?, y?, id?: shape}",
+    "shortcut": "Cmd+Alt+M"
+  },
+  {
+    "id": "comment.reply",
+    "label": "Reply",
+    "location": "Comments",
+    "params": "{index, text}",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.delete",
+    "label": "Delete Comment",
+    "location": "Review > Comments",
+    "params": "{index? | all?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.resolve",
+    "label": "Resolve Thread",
+    "location": "Comments",
+    "params": "{index, resolved?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.list",
+    "label": "Comments",
+    "location": "",
+    "params": "{slide?} → comments",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.next",
+    "label": "Next Comment",
+    "location": "Review > Comments",
+    "params": "{slide?, index?} → {slide, index, text}",
+    "shortcut": ""
+  },
+  {
+    "id": "comment.prev",
+    "label": "Previous Comment",
+    "location": "Review > Comments",
+    "params": "{slide?, index?} → {slide, index, text}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.accessibility",
+    "label": "Check Accessibility",
+    "location": "Review > Accessibility",
+    "params": "{} → [{slide, shape, issue}]",
+    "shortcut": ""
+  },
+  {
+    "id": "review.spelling",
+    "label": "Spelling",
+    "location": "Review > Proofing",
+    "params": "{lang?, ignore?:[word]} → [{slide, shape?, row?, col?, notes?, para, start, end, word, lang, suggestions}] (shapes, table cells and notes; repeated words as {repeated, deleteFrom}; runs marked noProof skipped; each run in its own language, lang? for runs without one; Hunspell dictionaries installed on the system, else a built-in list of common misspellings)",
+    "shortcut": "F7"
+  },
+  {
+    "id": "review.spellingChange",
+    "label": "Change Spelling",
+    "location": "Review > Proofing",
+    "params": "{shape, word, to, all?, para?, start?, row?, col?} → {changed} (replace the whole word in that shape's text, the one at para/start, or in every shape with all)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.addToDictionary",
+    "label": "Add to Dictionary",
+    "location": "Review > Proofing",
+    "params": "{word} → {word, file} (append to the user dictionary file; not an undo step)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.dictionary",
+    "label": "Spelling Dictionary",
+    "location": "Review > Proofing",
+    "params": "{lang?} → {lang, available, found, folders} (whether review.spelling has a dictionary, and which file)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.thesaurus",
+    "label": "Thesaurus",
+    "location": "Review > Proofing",
+    "params": "{word? (default: the selected word, or the word at the caret)} → {word, senses: [{word, synonyms}]}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.replaceWord",
+    "label": "Insert Synonym",
+    "location": "",
+    "params": "{with}: replace the selected word (or the word at the caret) while editing text",
+    "shortcut": ""
+  },
+  {
+    "id": "review.compare",
+    "label": "Compare",
+    "location": "Review > Compare",
+    "params": "{path} | {name, data: base64} — compare the open deck with another file → {name, changes: [{kind, slide, number, onlyIn?, revised, details}]}; each change is described from the open deck: `onlyIn: \"deck\"` is in the deck and not in the file, `onlyIn: \"file\"` is in the file and not in the deck, `changed` is in both and differs; `slide` is 0-based, `number` the editor's slide number; review.accept takes the FILE's side, so it deletes what is only in the deck (Accept All keeps the deck's last remaining slide rather than deleting it)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.revisions",
+    "label": "Revisions",
+    "location": "",
+    "params": "{} → {name, changes: [{kind: inserted|deleted|changed, slide (0-based), number (editor's), onlyIn?: deck|file, revised, details}]}; `onlyIn: deck` = only in the open deck, `file` = only in the compared file; accepting takes the file's side",
+    "shortcut": ""
+  },
+  {
+    "id": "review.accept",
+    "label": "Accept Revision",
+    "location": "Review > Compare",
+    "params": "{index} | {all: true} — accept the compared file's side of a change (or all): what is only in the file is added, what is only in the open deck is deleted (all: true leaves the deck's last remaining slide in place), a changed slide becomes the file's",
+    "shortcut": ""
+  },
+  {
+    "id": "review.reject",
+    "label": "Reject Revision",
+    "location": "Review > Compare",
+    "params": "{index} | {all: true} → {rejected} (drop revisions without applying them: the open deck stays as it is; not an undo step)",
+    "shortcut": ""
+  },
+  {
+    "id": "review.endCompare",
+    "label": "End Review",
+    "location": "Review > Compare",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "show.fromStart",
+    "label": "Play from Start",
+    "location": "Slide Show > Start Slide Show",
+    "params": "{}",
+    "shortcut": "Cmd+Shift+Enter"
+  },
+  {
+    "id": "show.fromCurrent",
+    "label": "Play from Current Slide",
+    "location": "Slide Show > Start Slide Show",
+    "params": "{}",
+    "shortcut": "Cmd+Enter"
+  },
+  {
+    "id": "show.setup",
+    "label": "Set Up Slide Show…",
+    "location": "Slide Show > Set Up",
+    "params": "{type?: speaker|browsed|kiosk, loop?: bool, noNarration?, noAnimation?, useTimings?, showMediaControls?, from?, to?, custom?: name}",
+    "shortcut": ""
+  },
+  {
+    "id": "show.customShow",
+    "label": "Custom Slide Show",
+    "location": "Slide Show > Start Slide Show",
+    "params": "{name, slides: [index]} | {name, delete: true}",
+    "shortcut": ""
+  },
+  {
+    "id": "document.inspect",
+    "label": "Inspect Presentation",
+    "location": "",
+    "params": "{} → slides with titles, layouts, shape counts; selection; size; theme",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.inspect",
+    "label": "Inspect Slide",
+    "location": "",
+    "params": "{index?} → the slide's shapes with ids, kinds, boxes, text, fills, animations, transition, notes (text, and notesBody with its formatting)",
+    "shortcut": ""
+  },
+  {
+    "id": "slide.actions",
+    "label": "Inspect Slide Actions",
+    "location": "",
+    "params": "{index?} → {index, slideId, actions: [{owner, event, type, target, hyperlink}]}; lists shape click/hover actions and text-run links/hover actions (including table cells) without executing them",
+    "shortcut": ""
+  },
+  {
+    "id": "shape.inspect",
+    "label": "Inspect Shape",
+    "location": "",
+    "params": "{id} → full shape JSON plus its effective box",
+    "shortcut": ""
+  },
+  {
+    "id": "commands.list",
+    "label": "List Commands",
+    "location": "",
+    "params": "{filter?: substring} → [{id, label, params, enabled}]",
+    "shortcut": ""
+  },
+  {
+    "id": "media.play",
+    "label": "Play",
+    "location": "Playback > Preview",
+    "params": "{id?, from?: ms}",
+    "shortcut": "Alt+P"
+  },
+  {
+    "id": "media.pause",
+    "label": "Pause",
+    "location": "Playback > Preview",
+    "params": "{id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.toggle",
+    "label": "Play/Pause",
+    "location": "",
+    "params": "{id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.stop",
+    "label": "Stop",
+    "location": "Playback > Preview",
+    "params": "{id?}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.seek",
+    "label": "Seek",
+    "location": "",
+    "params": "{id?, ms}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.info",
+    "label": "Media Info",
+    "location": "",
+    "params": "{id?} → {id, name, contentType, bytes, durationMs, video, width, height, probe: {container, audio?, video?}, options, status?}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.posterFrame",
+    "label": "Poster Frame",
+    "location": "Video Format > Adjust",
+    "params": "{id?, ms?: frame time (default: current position)}",
+    "shortcut": ""
+  },
+  {
+    "id": "media.gifPlay",
+    "label": "Play/Pause GIF",
+    "location": "",
+    "params": "{id?, play?: bool (default: toggle)} → {id, playing}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.artisticEffect",
+    "label": "Artistic Effects",
+    "location": "Picture Format > Adjust",
+    "params": "{effect: none|artisticBlur|artisticPencilGrayscale|artisticLineDrawing|artisticFilmGrain|artisticCutout|artisticGlowEdges|artisticPhotocopy, ids?}",
+    "shortcut": ""
+  },
+  {
+    "id": "insert.zoom",
+    "label": "Zoom",
+    "location": "Insert > Links",
+    "params": "{kind?: slide|section|summary (default slide); slides?: [index] (slide and summary zooms); sections?: [index] (section zoom); returnToZoom?: bool (default: on for section and summary, off for slide)}",
+    "shortcut": ""
+  },
+  {
+    "id": "picture.compress",
+    "label": "Compress Pictures",
+    "location": "Picture Format > Adjust",
+    "params": "{ppi?: 330|220|150|96 (default 220), deleteCropped?: bool (default true), all?: bool (every picture in the presentation; default the selected pictures), ids?} → {pictures, before, after}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.normal",
+    "label": "Normal",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.outline",
+    "label": "Outline View",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.sorter",
+    "label": "Slide Sorter",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.notesPage",
+    "label": "Notes Page",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.reading",
+    "label": "Reading View",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.notes",
+    "label": "Notes",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.ruler",
+    "label": "Ruler",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.gridlines",
+    "label": "Gridlines",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": "Shift+F9"
+  },
+  {
+    "id": "view.guides",
+    "label": "Guides",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": "Alt+F9"
+  },
+  {
+    "id": "view.gridOptions",
+    "label": "Grid Options…",
+    "location": "",
+    "params": "{spacing?: pt, snap?: bool, smartGuides?: bool, gridlines?: bool, guides?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.zoomIn",
+    "label": "Zoom In",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+="
+  },
+  {
+    "id": "view.zoomOut",
+    "label": "Zoom Out",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+-"
+  },
+  {
+    "id": "view.zoom",
+    "label": "Set Zoom",
+    "location": "",
+    "params": "{percent}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.zoomDialog",
+    "label": "Zoom…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.fit",
+    "label": "Fit to Window",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.pane",
+    "label": "Task Pane",
+    "location": "",
+    "params": "{pane: format|animation|selection|comments|designer|background|smartart|null}",
+    "shortcut": ""
+  },
+  {
+    "id": "review.thesaurusPane",
+    "label": "Thesaurus",
+    "location": "",
+    "params": "{word?}: open the Thesaurus pane on the selected word",
+    "shortcut": "Shift+F7"
+  },
+  {
+    "id": "view.tab",
+    "label": "Ribbon Tab",
+    "location": "",
+    "params": "{tab}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.collapseRibbon",
+    "label": "Collapse the Ribbon",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+F1"
+  },
+  {
+    "id": "view.dark",
+    "label": "Dark Mode",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.grayscale",
+    "label": "Grayscale",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "view.newWindow",
+    "label": "New Window",
+    "location": "",
+    "params": "{on?: bool, slide?: index, delta?: int}",
+    "shortcut": ""
+  },
+  {
+    "id": "show.start",
+    "label": "Slide Show",
+    "location": "",
+    "params": "{from?: index, custom?: name}",
+    "shortcut": "F5"
+  },
+  {
+    "id": "show.presenter",
+    "label": "Presenter View",
+    "location": "",
+    "params": "{on?: bool} → {on, window} (presenter view, with notes, a clock and the next slide, appears in its own separate window beside the show window when the show starts; window is false in the browser build, which draws it inside the page)",
+    "shortcut": ""
+  },
+  {
+    "id": "show.keepCursor",
+    "label": "Keep Mouse Cursor Visible",
+    "location": "",
+    "params": "{on?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "show.end",
+    "label": "End Show",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "animation.preview",
+    "label": "Preview Animations",
+    "location": "",
+    "params": "{on?: bool, from?: effect index}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.home",
+    "label": "Home",
+    "location": "",
+    "params": "{on?}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.backstage",
+    "label": "File",
+    "location": "",
+    "params": "{page?: home|new|open|info|saveAs|print|export|about, on?: bool}",
+    "shortcut": "Alt+F"
+  },
+  {
+    "id": "app.closePresentation",
+    "label": "Close",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+W"
+  },
+  {
+    "id": "app.print",
+    "label": "Print",
+    "location": "",
+    "params": "{layout?, perPage?, slides?, includeHidden?, frame?, paper?: letter|a4|legal|a3, orientation?: portrait|landscape}",
+    "shortcut": "Cmd+P"
+  },
+  {
+    "id": "app.about",
+    "label": "About DeckCraft",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.checkUpdates",
+    "label": "Check for Updates…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.palette",
+    "label": "Command Palette",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+Shift+P"
+  },
+  {
+    "id": "app.preferences",
+    "label": "Preferences…",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+,"
+  },
+  {
+    "id": "app.openDialog",
+    "label": "Open…",
+    "location": "",
+    "params": "{purpose?}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.insertPictureDialog",
+    "label": "Picture from File…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.smartArtPictureDialog",
+    "label": "Insert Picture in Diagram…",
+    "location": "",
+    "params": "{id?, index}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.changePictureDialog",
+    "label": "Change Picture…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.insertAudioDialog",
+    "label": "Audio from File…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.reuseSlidesDialog",
+    "label": "Reuse Slides…",
+    "location": "",
+    "params": "{keepFormatting?: bool}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.insertVideoDialog",
+    "label": "Video from File…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.saveAsDialog",
+    "label": "Save As…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.exportDialog",
+    "label": "Export…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.browseThemeDialog",
+    "label": "Browse for Themes…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.compareDialog",
+    "label": "Compare…",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.dialog",
+    "label": "Open Dialog",
+    "location": "",
+    "params": "{id}",
+    "shortcut": ""
+  },
+  {
+    "id": "app.pasteSpecial",
+    "label": "Paste Special…",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+Alt+V"
+  },
+  {
+    "id": "app.qat",
+    "label": "Quick Access Toolbar",
+    "location": "",
+    "params": "{add: command id, params?, label?, icon?} | {remove: id, params?} | {reset: true} → [buttons]",
+    "shortcut": ""
+  },
+  {
+    "id": "app.find",
+    "label": "Find…",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+F"
+  },
+  {
+    "id": "app.replace",
+    "label": "Replace…",
+    "location": "",
+    "params": "{}",
+    "shortcut": "Cmd+H"
+  },
+  {
+    "id": "app.links",
+    "label": "Community Links",
+    "location": "",
+    "params": "{}",
+    "shortcut": ""
+  }
+]
