@@ -34,3 +34,24 @@ export async function fetchBinary(url: string, signal?: AbortSignal): Promise<Ar
 export function downloadUrl(url: string): string {
   return `${apiUrl('doc/proxy')}?url=${encodeURIComponent(url)}&download=1`
 }
+
+/** 保存上报禁用标记：后端未配 SAVE_API_TOKEN（403）或不可达时置位，本次会话不再重试 */
+let pushDisabled = false
+
+/**
+ * 保存时把最新文档字节上报到后端内存（拉模式）：
+ * 第三方系统凭 SAVE_API_TOKEN 调 GET /api/save/latest{/file} 拉取，
+ * 编辑器页面不做任何第三方回调注入。后端未启用时静默跳过。
+ */
+export async function pushLatestSave(name: string, saveAs: boolean, bytes: ArrayBuffer): Promise<void> {
+  if (pushDisabled) return
+  try {
+    const res = await fetch(
+      `${apiUrl('save/latest')}?name=${encodeURIComponent(name)}&saveAs=${saveAs}`,
+      { method: 'POST', body: bytes },
+    )
+    if (res.status === 403 || res.status === 404) pushDisabled = true
+  } catch {
+    pushDisabled = true
+  }
+}

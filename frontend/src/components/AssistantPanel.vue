@@ -1,58 +1,14 @@
 <template>
-  <!-- 贴边竖条（常驻入口 + 最小化形态）：可上下拖拽，点击展开；任务继续在后台运行 -->
-  <div
-    v-if="minimized || !show"
-    class="fixed right-0 z-30 flex flex-col items-center justify-center gap-1 w-4 h-24 bg-amber-400 border border-r-0 border-amber-500 rounded-l-lg cursor-pointer select-none touch-none"
-    :style="{ top: barTop + 'px' }"
-    @pointerdown="onBarDown"
-    @click="onBarClick"
+  <!-- AI 助手面板：通用 SidePanel 容器 + 对话内容；消息状态在组件内，面板隐藏不丢 -->
+  <SidePanel
+    :visible="visible"
+    title="AI 助手"
+    :busy="busy"
+    close-title="关闭（运行中的任务会被取消）"
+    @minimize="emit('update:visible', false)"
+    @close="close"
   >
-    <span v-if="busy" class="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-    <svg class="w-3 h-3 text-white" viewBox="0 0 16 16" fill="none">
-      <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
-  </div>
-
-  <!-- 展开：吸顶面板，可向左 / 向下拉大 -->
-  <div
-    v-else
-    class="fixed top-0 right-4 z-30 flex flex-col bg-white shadow-2xl rounded-b-xl overflow-hidden"
-    :style="{ width: panelW + 'px', height: panelH + 'px' }"
-  >
-    <!-- 拉大手柄：左边缘 / 底边缘 / 左下角 / 右下角 -->
-    <div class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-10" @pointerdown="startResize($event, 'left')"></div>
-    <div class="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10" @pointerdown="startResize($event, 'bottom')"></div>
-    <div class="absolute left-0 bottom-0 w-4 h-4 cursor-nesw-resize z-10" @pointerdown="startResize($event, 'corner')"></div>
-    <div class="absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize z-10" @pointerdown="startResize($event, 'corner')">
-      <svg class="absolute right-0.5 bottom-0.5 w-2.5 h-2.5 text-gray-300" viewBox="0 0 10 10" fill="none">
-        <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-      </svg>
-    </div>
-
-    <div class="flex items-center gap-2 pl-4 pr-2 h-11 shrink-0 border-b border-gray-100">
-      <span class="text-sm font-medium">AI 助手</span>
-      <span v-if="busy" class="text-xs text-gray-400">任务运行中…</span>
-      <div class="flex-1"></div>
-      <button
-        class="w-6 h-6 flex items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-600 cursor-pointer"
-        title="最小化"
-        @click="minimize"
-      >
-        <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-          <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button
-        class="w-6 h-6 flex items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-600 cursor-pointer"
-        title="关闭（运行中的任务会被取消）"
-        @click="close"
-      >
-        <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
-      </button>
-    </div>
-    <div ref="listRef" class="flex-1 overflow-y-auto flex flex-col gap-3 p-4">
+    <div ref="listRef" class="flex flex-col gap-3 p-4">
       <p v-if="messages.length === 0" class="text-sm text-muted m-0 leading-6">
         {{ hints }}
       </p>
@@ -65,48 +21,83 @@
         <span
           class="inline-block text-left px-3 py-2 rounded-lg max-w-[92%]"
           :class="m.role === 'user' ? 'bg-blue-50' : 'bg-gray-100'"
-        >{{ m.text || '…' }}</span>
+        >
+          <!-- 思考折叠组：收起只显示「思考」二字，点开看完整推理 -->
+          <details v-if="m.thinking" class="think mb-1">
+            <summary>思考</summary>
+            <div class="text-xs text-gray-400 leading-5 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{{ m.thinking }}</div>
+          </details>
+          {{ m.text || (m.activity ? '' : '…') }}
+          <!-- 运行中动作小字 -->
+          <span v-if="m.activity" class="flex items-center gap-1.5 text-xs text-gray-400 leading-5">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>{{ m.activity }}
+          </span>
+        </span>
       </div>
       <p v-if="error" class="text-sm text-red-500 m-0">{{ error }}</p>
     </div>
-    <div class="mx-3 mb-3 rounded-xl border border-gray-300 bg-gray-50 focus-within:border-gray-500 p-2 transition-colors">
-      <textarea
-        ref="inputRef"
-        v-model="input"
-        rows="1"
-        class="block w-full bg-transparent border-0 outline-none resize-none text-sm leading-6 placeholder-gray-400 max-h-[120px] overflow-y-auto"
-        placeholder="发消息，回车发送"
-        @input="autoSize"
-        @keydown.enter.exact.prevent="onSend"
-      ></textarea>
-      <div class="flex items-center justify-end pt-1">
-        <button
-          class="w-7 h-7 rounded-full flex items-center justify-center border-0 p-0 cursor-pointer transition-colors"
-          :class="input.trim() && !busy ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-default'"
-          title="发送"
-          @click="onSend"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
+
+    <template #footer>
+      <div class="mx-3 mb-3 rounded-xl border border-gray-300 bg-gray-50 focus-within:border-gray-500 p-2 transition-colors">
+        <textarea
+          ref="inputRef"
+          v-model="input"
+          rows="1"
+          class="block w-full bg-transparent border-0 outline-none resize-none text-sm leading-6 placeholder-gray-400 max-h-[120px] overflow-y-auto"
+          placeholder="发消息，回车发送"
+          @input="autoSize"
+          @keydown.enter.exact.prevent="onSend"
+        ></textarea>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <div class="engine-dd relative">
+          <button
+            class="h-6 px-2 rounded-full border-0 p-0 cursor-pointer text-xs leading-none bg-transparent text-gray-400 hover:text-gray-600 transition-colors"
+            title="选择 AI 引擎"
+            @click.stop="engineMenu = !engineMenu"
+          >{{ aiEngine === 'deepseek' ? 'LLM' : 'DSH' }} ▾</button>
+          <!-- 引擎下拉：LLM AI / DSH AI -->
+          <div
+            v-if="engineMenu"
+            class="absolute bottom-8 right-0 z-10 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+          >
+            <button
+              v-for="opt in ENGINE_OPTIONS"
+              :key="opt.value"
+              class="w-full flex flex-col items-start gap-0.5 border-0 bg-transparent p-0 px-3 py-2 text-left cursor-pointer transition-colors hover:bg-gray-50"
+              @click.stop="pickEngine(opt.value)"
+            >
+              <span class="text-xs font-medium leading-4" :class="aiEngine === opt.value ? 'text-amber-600' : 'text-gray-700'">
+                {{ opt.label }}{{ aiEngine === opt.value ? ' ✓' : '' }}
+              </span>
+              <span class="text-[11px] text-gray-400 leading-4">{{ opt.desc }}</span>
+            </button>
+          </div>
+        </div>
+          <button
+            class="w-7 h-7 rounded-full flex items-center justify-center border-0 p-0 cursor-pointer transition-colors"
+            :class="input.trim() && !busy ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-default'"
+            title="发送"
+            @click="onSend"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </SidePanel>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
-import type { ChatMessage } from '@/api/ai'
-import { converse, liveDisplay, type KernelBridge, type ShellKernel } from '@/artcraft/shellAssistant'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import SidePanel from '@/components/SidePanel.vue'
+import type { AiEngine, ChatMessage } from '@/api/ai'
+import { converse, replySummary, type KernelBridge, type ShellKernel } from '@/artcraft/shellAssistant'
+import { aiEngine, setAiEngine } from '@/artcraft/aiEngine'
 
 const props = defineProps<{ visible: boolean; kernel: ShellKernel; bridge: KernelBridge | null }>()
-const emit = defineEmits<{ (e: 'update:visible', v: boolean): void }>()
-
-const show = computed({
-  get: () => props.visible,
-  set: (v: boolean) => emit('update:visible', v),
-})
+const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'busy', v: boolean): void }>()
 
 /** 按内核显示示例指令 */
 const HINTS: Record<ShellKernel, string> = {
@@ -119,18 +110,36 @@ const hints = computed(() => HINTS[props.kernel])
 interface Msg {
   role: 'user' | 'assistant'
   text: string
+  thinking?: string // 模型推理思考（折叠展示）
+  activity?: string // 运行中当前小动作（思考中 / 执行命令）
 }
 const messages = ref<Msg[]>([])
 const history = ref<ChatMessage[]>([]) // OpenAI 兼容历史（不含 system）
 const input = ref('')
 const busy = ref(false)
 const error = ref('')
+
+/** busy 同步给竖条呼吸点 */
+watch(busy, (v) => emit('busy', v))
+
+/** 引擎下拉：点外部自动收起 */
+const ENGINE_OPTIONS: Array<{ value: AiEngine; label: string; desc: string }> = [
+  { value: 'deepseek', label: 'LLM AI', desc: 'DeepSeek 直连' },
+  { value: 'dsh', label: 'DSH AI', desc: '本机 DeepSeek Harness' },
+]
+const engineMenu = ref(false)
+function pickEngine(v: AiEngine) {
+  setAiEngine(v)
+  engineMenu.value = false
+}
+function onDocClick(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('.engine-dd')) engineMenu.value = false
+}
+onMounted(() => document.addEventListener('click', onDocClick))
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
+
 const listRef = ref<HTMLElement>()
 const inputRef = ref<HTMLTextAreaElement>()
-const minimized = ref(false)
-const barTop = ref(Math.round(window.innerHeight / 3))
-const panelW = ref(380)
-const panelH = ref(Math.round(window.innerHeight * 0.72))
 let ctrl: AbortController | null = null
 
 async function scrollBottom() {
@@ -138,91 +147,12 @@ async function scrollBottom() {
   listRef.value?.scrollTo({ top: listRef.value.scrollHeight })
 }
 
-/** 最小化：只收起 UI，运行中的任务不动 */
-function minimize() {
-  barTop.value = Math.round(window.innerHeight / 3)
-  minimized.value = true
-}
-
 /** 关闭即取消：中止进行中的请求与命令序列 */
 function close() {
   ctrl?.abort()
   ctrl = null
   busy.value = false
-  minimized.value = false
-  show.value = false
-}
-
-/** 面板拉大：向左加宽 / 向下加高（左右下角手柄两者同时） */
-function startResize(e: PointerEvent, dir: 'left' | 'bottom' | 'corner') {
-  e.preventDefault()
-  const el = e.currentTarget as HTMLElement
-  // 锁定指针：即使拖进内核 iframe（其内部事件不冒泡到父页）也能收到 move/up；合成事件无活动指针时回退 window
-  let target: HTMLElement | Window = window
-  try {
-    el.setPointerCapture(e.pointerId)
-    target = el
-  } catch { /* keep window */ }
-  const sx = e.clientX
-  const sy = e.clientY
-  const w0 = panelW.value
-  const h0 = panelH.value
-  const move = (ev: Event) => {
-    const p = ev as PointerEvent
-    if (dir !== 'bottom') {
-      panelW.value = Math.min(window.innerWidth - 60, Math.max(320, w0 + sx - p.clientX))
-    }
-    if (dir !== 'left') {
-      panelH.value = Math.min(window.innerHeight, Math.max(280, h0 + p.clientY - sy))
-    }
-  }
-  const up = () => {
-    target.removeEventListener('pointermove', move)
-    target.removeEventListener('pointerup', up)
-    target.removeEventListener('pointercancel', up)
-    window.removeEventListener('blur', up)
-  }
-  target.addEventListener('pointermove', move)
-  target.addEventListener('pointerup', up)
-  target.addEventListener('pointercancel', up)
-  window.addEventListener('blur', up)
-}
-
-/** 最小化小条：按住上下拖拽，点击（未拖动时）展开 */
-let dragStartY = 0
-let dragged = false
-function onBarDown(e: PointerEvent) {
-  const el = e.currentTarget as HTMLElement
-  // 锁定指针：拖进内核 iframe 松开也能收到 up，避免监听残留导致"不按住也拖"
-  let target: HTMLElement | Window = window
-  try {
-    el.setPointerCapture(e.pointerId)
-    target = el
-  } catch { /* keep window */ }
-  dragStartY = e.clientY - barTop.value
-  dragged = false
-  const move = (ev: Event) => {
-    const p = ev as PointerEvent
-    const top = p.clientY - dragStartY
-    if (Math.abs(top - barTop.value) > 3) dragged = true
-    barTop.value = Math.min(window.innerHeight - 110, Math.max(0, top))
-  }
-  const up = () => {
-    target.removeEventListener('pointermove', move)
-    target.removeEventListener('pointerup', up)
-    target.removeEventListener('pointercancel', up)
-    window.removeEventListener('blur', up)
-  }
-  target.addEventListener('pointermove', move)
-  target.addEventListener('pointerup', up)
-  target.addEventListener('pointercancel', up)
-  window.addEventListener('blur', up)
-}
-function onBarClick() {
-  if (!dragged) {
-    minimized.value = false
-    show.value = true
-  }
+  emit('update:visible', false)
 }
 
 /** 输入框随内容自动增高（上限 120px 后内部滚动） */
@@ -240,7 +170,7 @@ function onSend() {
   busy.value = true
   error.value = ''
   messages.value.push({ role: 'user', text })
-  const live = messages.value.push({ role: 'assistant', text: '' }) - 1
+  const live = messages.value.push({ role: 'assistant', text: '', activity: '' }) - 1
   void scrollBottom()
 
   ctrl = new AbortController()
@@ -250,16 +180,24 @@ function onSend() {
     history: history.value,
     text,
     signal: ctrl.signal,
+    engine: aiEngine.value,
     onDelta: (liveText) => {
       messages.value[live].text = liveText
       void scrollBottom()
     },
+    onReason: (full) => {
+      messages.value[live].thinking = full
+    },
+    onActivity: (label) => {
+      messages.value[live].activity = label
+    },
   })
     .then((reply) => {
-      // 命令执行完补最终展示文本；纯命令回复（剥标签后无文字）不留白泡
-      const shown = liveDisplay(reply)
+      // 命令执行完补最终展示文本（纯操作回复显示摘要，不留白泡）
+      const shown = replySummary(reply)
       if (shown) messages.value[live].text = shown
       else messages.value.splice(live, 1)
+      if (messages.value[live]) messages.value[live].activity = ''
       busy.value = false
       ctrl = null
       void scrollBottom()
@@ -277,3 +215,20 @@ function onSend() {
     })
 }
 </script>
+
+<style scoped>
+/* 思考折叠组：收起只显示「思考」二字（去默认三角） */
+.think summary {
+  font-size: 12px;
+  color: #9ca3af;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.think summary::-webkit-details-marker {
+  display: none;
+}
+.think summary:hover {
+  color: #6b7280;
+}
+</style>

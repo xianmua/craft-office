@@ -46,11 +46,19 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(cfg_data.clone())
             .app_data(guard_data.clone())
+            // 保存上报 body 上限放宽到文档大小上限（默认 2MB 会拦住大文档）
+            .app_data(web::PayloadConfig::new(cfg_data.doc.max_bytes as usize))
             .wrap(middleware::Logger::default())
             .wrap(middleware::Compress::default())
             // 前端产物静态资源（哈希文件名，可长缓存）
             .service(
                 fs::Files::new("/assets", assets_dir)
+                    .prefer_utf8(true)
+                    .use_etag(true),
+            )
+            // CJK 兜底字体（backend/static/fonts，见 docs/BUILD.md；外壳 font.add 自动安装）
+            .service(
+                fs::Files::new("/fonts", std::path::Path::new(&static_dir).join("fonts"))
                     .prefer_utf8(true)
                     .use_etag(true),
             )
@@ -82,7 +90,13 @@ async fn main() -> std::io::Result<()> {
             )
             .service(routes::doc::doc_meta)
             .service(routes::doc::doc_proxy)
+            .service(routes::save_store::push_latest)
+            .service(routes::save_store::latest_meta)
+            .service(routes::save_store::latest_file)
             .service(routes::ai::ai_chat)
+            .service(routes::ai::ai_config_get)
+            .service(routes::ai::ai_config_put)
+            .service(routes::ai::ai_models)
             .service(routes::mcp::mcp_post)
             .service(routes::mcp::mcp_hint)
             .service(routes::plugins::list_plugins)

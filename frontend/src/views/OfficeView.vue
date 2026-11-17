@@ -67,13 +67,23 @@
         />
         <FallbackPreview v-else-if="preview" :model="preview" />
 
-        <!-- 外壳 AI 助手（wordcraft/gridcraft/deckcraft）：入口为右侧贴边竖条，无悬浮球 -->
-        <AssistantPanel
-          v-if="shellAssistant"
-          v-model:visible="assistantOpen"
-          :kernel="shellKernel"
-          :bridge="assistantBridge"
-        />
+        <!-- 外壳 dock：竖条+扇形菜单为唯一入口；助手 / 设置面板共用 SidePanel 容器 -->
+        <template v-if="shellAssistant">
+          <FanDock
+            v-if="!assistantOpen && !settingsOpen"
+            :busy="assistantBusy"
+            @action="onDockAction"
+            @expand="assistantOpen = true"
+          />
+          <AssistantPanel
+            :visible="assistantOpen"
+            :kernel="shellKernel"
+            :bridge="assistantBridge"
+            @update:visible="assistantOpen = $event"
+            @busy="assistantBusy = $event"
+          />
+          <SettingsPanel v-model:visible="settingsOpen" />
+        </template>
 
         <t-dialog
           v-model:visible="linkDialog"
@@ -101,10 +111,14 @@ import { ErrorCircleFilledIcon } from "tdesign-icons-vue-next";
 import KernelFrame from "@/components/KernelFrame.vue";
 import FallbackPreview from "@/components/FallbackPreview.vue";
 import PluginMarket from "@/components/PluginMarket.vue";
+import FanDock from "@/components/FanDock.vue";
 import AssistantPanel from "@/components/AssistantPanel.vue";
+import SettingsPanel from "@/components/SettingsPanel.vue";
+import { setAiEngine } from "@/artcraft/aiEngine";
 import type { KernelBridge, ShellKernel } from "@/artcraft/shellAssistant";
+import { ensureCjkFont } from "@/artcraft/shellAssistant";
 import { useDocSource, fileNameOf } from "@/composables/useDocSource";
-import { fetchBinary, fetchMeta } from "@/api/doc";
+import { fetchBinary, fetchMeta, pushLatestSave } from "@/api/doc";
 import { fetchPlugins } from "@/api/plugins";
 import { KERNEL_OF, type KernelSavePayload } from "@/artcraft/loader";
 import { createHostRelay } from "@/artcraft/hostRelay";
@@ -165,6 +179,24 @@ const shellAssistant = computed(
 const shellKernel = computed(() => editorKernel.value as ShellKernel);
 const assistantOpen = ref(false);
 const enabledIds = ref<Set<string>>(new Set());
+const settingsOpen = ref(false);
+const assistantBusy = ref(false);
+
+/** 竖条扇形菜单动作分发：引擎切换并开助手 / 保存 / 设置 */
+function onDockAction(key: "llm" | "dsh" | "save" | "settings") {
+  if (key === "llm") {
+    setAiEngine("deepseek");
+    assistantOpen.value = true;
+  } else if (key === "dsh") {
+    setAiEngine("dsh");
+    assistantOpen.value = true;
+  } else if (key === "save") {
+    // 走内核 file.save 命令，宿主桥会收到保存事件并触发下载
+    assistantBridge.value?.("execute", "file.save", {}).catch(() => {});
+  } else if (key === "settings") {
+    settingsOpen.value = true;
+  }
+}
 
 /** 页面命令 API 桥：转交 KernelFrame（同源 iframe contentWindow.window.<app>） */
 const assistantBridge = computed<KernelBridge | null>(() =>
@@ -236,17 +268,27 @@ async function load() {
 
 function onKernelReady() {
   relay.toParent({ type: "artcraft:ready" });
+  // wasm 进程无系统中文字体，就绪即装 CJK 兜底字体（每次刷新需重装）
+  void ensureCjkFont(editorKernel.value as ShellKernel, assistantBridge.value);
   if (!binary.value) return;
   kernelRef.value?.openDoc(fileName.value || "document.docx", binary.value);
 }
 
-function onKernelSave(payload: KernelSavePayload) {
-  // 嵌入模式：保存字节转交第三方父页面持久化，不触发本地下载
+async function onKernelSave(payload: KernelSavePayload) {
+  // ① 嵌入模式：保存字节 postMessage 转交第三方父页面持久化
+  let handled = false;
   if (relay.active) {
     relay.toParent({ type: "artcraft:save", name: payload.name, saveAs: payload.saveAs, bytes: payload.bytes });
+    handled = true;
+  }
+  // ② 拉模式上报：字节报到后端内存，第三方凭 SAVE_API_TOKEN 调 /api/save/latest 拉取；
+  //    后端未启用（未配 token）时静默跳过，不阻塞保存流程
+  void pushLatestSave(payload.name, payload.saveAs, payload.bytes);
+  if (handled) {
     dirty.value = false;
     return;
   }
+  // ③ 默认：本地下载
   const blob = new Blob([payload.bytes]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);

@@ -7,8 +7,8 @@
  */
 
 import type { ChatMessage } from '@/api/ai'
-import { chatStream } from '@/api/ai'
-import { apiUrl } from '@/api/base'
+import { chatStream, type AiEngine } from '@/api/ai'
+import { apiUrl, kernelUrl } from '@/api/base'
 
 /** 内核页面命令 API 桥：见 KernelFrame.call */
 export type KernelBridge = (method: string, ...args: unknown[]) => Promise<unknown>
@@ -356,25 +356,36 @@ export function displayText(reply: string): string {
   return reply.replace(/<cmd>[\s\S]*?<\/cmd>/g, '').trim()
 }
 
-export async function runCmds(cmds: CmdOp[], bridge: KernelBridge, signal?: AbortSignal): Promise<void> {
-  for (const c of cmds) {
+export async function runCmds(
+  cmds: CmdOp[],
+  bridge: KernelBridge,
+  signal?: AbortSignal,
+  onActivity?: (label: string) => void,
+): Promise<void> {
+  for (const [i, c] of cmds.entries()) {
     if (signal?.aborted) throw new DOMException('aborted', 'AbortError')
+    onActivity?.(`执行 ${c.command}（${i + 1}/${cmds.length}）`)
     const result = await bridge('execute', c.command, c.params ?? {})
     // execute 返回 {ok:false,error} 形状时抛出，中断后续命令
     if (result && typeof result === 'object' && (result as Record<string, unknown>).ok === false) {
       throw new Error(String((result as Record<string, unknown>).error ?? `命令 ${c.command} 执行失败`))
     }
   }
+  if (cmds.length) onActivity?.('')
 }
 
-/** 一轮完整对话：组消息 → 流式请求 → 解析并执行 <cmd>（word 版另处理 <write> 写回）。 */
+/** 一轮完整对话：组消息 → 流式请求 → 解析并执行 <cmd>（word 版另处理 <write> 写回）。
+ * onReason 回调思考增量；onActivity 上报当前小动作（思考中 / 执行命令），空串表示动作结束。 */
 export async function converse(opts: {
   kernel: ShellKernel
   bridge: KernelBridge
   history: ChatMessage[]
   text: string
   onDelta: (liveText: string) => void
+  onReason?: (full: string) => void
+  onActivity?: (label: string) => void
   signal?: AbortSignal
+  engine?: AiEngine
 }): Promise<string> {
   const [system, skill, cmdRef, context] = await Promise.all([
     systemPrompt(opts.kernel),
@@ -390,22 +401,31 @@ export async function converse(opts: {
   ]
 
   let full = ''
+  let reason = ''
+  opts.onActivity?.('思考中') // DSH agent 模式思考阶段无增量输出，请求发出即显示
   const reply = await chatStream(
     messages,
     (delta) => {
       full += delta
       opts.onDelta(liveDisplay(full))
+      opts.onActivity?.('') // 正文开始输出，动作提示让位
     },
     opts.signal,
+    opts.engine,
+    (delta) => {
+      reason += delta
+      opts.onReason?.(reason)
+      opts.onActivity?.('思考中')
+    },
   )
 
   const cmds = parseCmds(reply)
   opts.history.push({ role: 'user', content: user }, { role: 'assistant', content: reply })
   // wordcraft 先写回文本再执行命令（对齐旧内核侧顺序，定位由命令自行完成）
   if (opts.kernel === 'wordcraft') {
-    await runWrite(reply, opts.bridge)
+    await runWrite(reply, opts.bridge, opts.onActivity)
   }
-  await runCmds(cmds, opts.bridge, opts.signal)
+  await runCmds(cmds, opts.bridge, opts.signal, opts.onActivity)
   return reply
 }
 
@@ -435,9 +455,10 @@ function pageTarget(w: WriteOp): { block: number; off: number } | null {
 
 /** 解析 <write> 写回标记并转命令执行（wordcraft 无内核插件宿主后由外壳承接）：
  * 带 page 属性时先由外壳定位光标再插入；选区替换仅限无 page 的普通写回。 */
-async function runWrite(reply: string, bridge: KernelBridge): Promise<void> {
+async function runWrite(reply: string, bridge: KernelBridge, onActivity?: (label: string) => void): Promise<void> {
   const w = parseWrite(reply)
   if (!w) return
+  onActivity?.('写入文档')
   if (wordHadSelection && !w.page) {
     // 替换选区：删掉选区内容，光标落在选区起点后插入
     await bridge('execute', 'edit.cut', {}).catch(() => {})
@@ -457,4 +478,40 @@ export function liveDisplay(reply: string): string {
     .replace(/<write[^>]*>[^<]*$/, '')
     .replace(/<\/write>/g, '')
     .trim()
+}
+
+/** 最终展示文本：liveDisplay 为空时回退 <write> 正文 / 命令条数摘要，避免纯操作回复不显示 */
+export function replySummary(reply: string): string {
+  const shown = liveDisplay(reply)
+  if (shown) return shown
+  const wm = reply.match(/<write[^>]*>([\s\S]*?)<\/write>/)
+  if (wm && wm[1].trim()) return wm[1].trim()
+  const n = (reply.match(/<cmd>/g) || []).length
+  return n ? `已执行 ${n} 条操作。` : ''
+}
+
+let cjkFontB64: string | null = null
+
+/** CJK 兜底字体 base64（wasm 进程无系统中文字体，缺字会显示方块；来源见 docs/BUILD.md） */
+async function cjkFontBase64(): Promise<string> {
+  if (cjkFontB64) return cjkFontB64
+  const res = await fetch(kernelUrl('fonts/SourceHanSansCN-Regular.otf'))
+  if (!res.ok) throw new Error(`font fetch ${res.status}`)
+  const buf = new Uint8Array(await res.arrayBuffer())
+  let s = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < buf.length; i += CHUNK) {
+    s += String.fromCharCode(...buf.subarray(i, i + CHUNK))
+  }
+  cjkFontB64 = btoa(s)
+  return cjkFontB64
+}
+
+/** 内核就绪后安装中文字体（每次刷新 wasm 进程重建，需重装；失败静默不影响主流程） */
+export async function ensureCjkFont(kernel: ShellKernel, bridge: KernelBridge | null): Promise<void> {
+  if (kernel !== 'wordcraft' || !bridge) return
+  try {
+    const data = await cjkFontBase64()
+    await bridge('execute', 'font.add', { data, name: 'SourceHanSansCN-Regular.otf' })
+  } catch { /* 兜底失败仅表现为缺字方块 */ }
 }

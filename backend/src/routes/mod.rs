@@ -3,3 +3,4 @@ pub mod doc;
 pub mod mcp;
 pub mod page;
 pub mod plugins;
+pub mod save_store;

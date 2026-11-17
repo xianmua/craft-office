@@ -366,7 +366,7 @@ fn mime_of(ext: &str) -> &'static str {
 
 /// 构建 Content-Disposition：ASCII 文件名作回退，非 ASCII 走 RFC 5987
 /// `filename*=UTF-8''` 百分号编码，保证响应头纯 ASCII，下游代理不会因 latin-1 转码失败 500。
-fn content_disposition(kind: &str, filename: &str) -> String {
+pub(crate) fn content_disposition(kind: &str, filename: &str) -> String {
     let ascii: String = filename
         .chars()
         .map(|c| if c.is_ascii() { c } else { '_' })

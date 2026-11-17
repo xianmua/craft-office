@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>ArtCraft 嵌入保存验证页</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 12px; }
+    #log { white-space: pre-wrap; background: #f6f6f6; border: 1px solid #ddd; border-radius: 6px; padding: 8px; min-height: 60px; margin-bottom: 8px; }
+    iframe { width: 100%; height: 720px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div id="log">等待 /office 事件…</div>
+  <!-- 第三方宿主页：iframe 嵌 /office，parentOrigin 白名单声明本页 origin -->
+  <iframe id="oc" src="/office?url=/samples/demo.docx&parentOrigin=http%3A%2F%2Flocalhost%3A7777"></iframe>
+  <script>
+    const log = (m) => { document.getElementById('log').textContent += '\n' + m; };
+    window.addEventListener('message', (e) => {
+      if (e.origin !== 'http://localhost:7777') return;
+      const d = e.data;
+      if (!d || typeof d.type !== 'string') return;
+      if (d.type === 'artcraft:ready') log('父页收到 artcraft:ready');
+      if (d.type === 'artcraft:dirty') log('父页收到 artcraft:dirty dirty=' + d.dirty);
+      if (d.type === 'artcraft:save') log('父页收到 artcraft:save name=' + d.name + ' bytes=' + (d.bytes ? d.bytes.byteLength : 'null') + ' saveAs=' + d.saveAs);
+    });
+    // 供自动化读取
+    window.__saveEvents = [];
+    const _origLog = log;
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (d && d.type === 'artcraft:save') window.__saveEvents.push(d.name + ':' + (d.bytes ? d.bytes.byteLength : 0));
+    });
+  </script>
+</body>
+</html>

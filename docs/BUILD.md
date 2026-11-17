@@ -3,6 +3,10 @@
 ## 依赖
 - Node.js >= 20
 - Rust >= 1.80（`cargo` 在 PATH 中）
+- CJK 兜底字体（不入库）：`backend/static/fonts/SourceHanSansCN-{Regular,Bold}.otf`。
+  下载 `https://registry.npmmirror.com/source-han-sans-cn/-/source-han-sans-cn-1.0.0.tgz`
+  解包取 `package/SourceHanSansCN-{Regular,Bold}.otf` 放入 `backend/static/fonts/`。
+  缺失时 wordcraft 中文正文显示为方块（外壳 `font.add` 自动安装，见 `shellAssistant.ts` 的 `ensureCjkFont`）。
 
 ## Windows 一键开发（两个终端）
 
