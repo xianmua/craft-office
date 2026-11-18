@@ -3,17 +3,7 @@ export interface PluginCatalog {
   installed: Array<{ id: string; enabled: boolean }>
 }
 
-import { apiUrl } from './base'
-
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = await res.json()
-    if (body?.message) return `${body.message}（HTTP ${res.status}）`
-  } catch {
-    /* 非 JSON 响应 */
-  }
-  return `请求失败（HTTP ${res.status}）`
-}
+import { apiUrl, readError } from './base'
 
 export async function fetchPlugins(): Promise<PluginCatalog> {
   const res = await fetch(apiUrl('plugins'))

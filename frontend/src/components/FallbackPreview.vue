@@ -4,7 +4,7 @@
       <t-alert theme="warning" :close="false">
         <template #message>
           未检测到 ArtCraft 内核，当前为降级只读预览（结构解析在浏览器本地完成，文件内容不会上传）。
-          接入内核后即可编辑与导出，见 vendor/artcraft/README.md。
+          接入内核后即可编辑与导出。
         </template>
       </t-alert>
 
@@ -44,7 +44,7 @@
                     :key="c"
                     class="bg-gray-50 border border-gray-200 px-3 py-1 text-muted font-normal min-w-[80px]"
                   >
-                    {{ columnName(c - 1) }}
+                    {{ colName(c) }}
                   </th>
                 </tr>
               </thead>
@@ -83,7 +83,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { PreviewModel } from '@/artcraft/ooxml'
+import { colName, type PreviewModel } from '@/artcraft/ooxml'
 
 const props = defineProps<{ model: PreviewModel }>()
 
@@ -104,15 +104,4 @@ const sheetViews = computed(() =>
     return { name: sheet.name, rows, width: width || 1, truncated: sheet.truncated }
   }),
 )
-
-function columnName(index: number): string {
-  let n = index + 1
-  let name = ''
-  while (n > 0) {
-    const rem = (n - 1) % 26
-    name = String.fromCharCode(65 + rem) + name
-    n = Math.floor((n - 1) / 26)
-  }
-  return name
-}
 </script>

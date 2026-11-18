@@ -112,29 +112,7 @@ pub async fn doc_meta(
 
     let prep = prepare(&cfg, &guard, &q.url, Purpose::Meta).await?;
 
-    let head = prep
-        .client
-        .head(prep.target.clone())
-        .header(ACCEPT_ENCODING, "identity")
-        .send()
-        .await
-        .map_err(|e| ApiError::Upstream(format!("探测文件信息失败：{e}")))?;
-
-    let (status, size) = if head.status().is_success() {
-        let size = content_length(head.headers());
-        (head.status(), size)
-    } else {
-        let probe = prep
-            .client
-            .get(prep.target.clone())
-            .header(ACCEPT_ENCODING, "identity")
-            .header(RANGE, "bytes=0-0")
-            .send()
-            .await
-            .map_err(|e| ApiError::Upstream(format!("探测文件信息失败：{e}")))?;
-        let size = content_length(probe.headers()).or_else(|| size_from_content_range(probe.headers()));
-        (probe.status(), size)
-    };
+    let (status, size) = probe_size(&prep).await?;
 
     if !status.is_success() && status.as_u16() != 206 {
         return Err(ApiError::Upstream(format!(
@@ -332,11 +310,40 @@ fn size_from_content_range(headers: &reqwest::header::HeaderMap) -> Option<u64> 
     total.parse::<u64>().ok()
 }
 
-/// 取 URL 的路径部分；本地相对路径（/samples/x.docx）原样返回。
-fn url_path_of(raw: &str) -> String {
-    if raw.starts_with('/') {
-        return raw.to_string();
+/// HEAD → Range 双段探测总长：HEAD 拿不到（或为 0）时降级 Range bytes=0-0；
+/// 206 时 Content-Length 是分片长度，总长只能从 Content-Range 取。
+/// /api/doc/meta 与 mcp 的 head_size 共用。
+pub(crate) async fn probe_size(prep: &Prepared) -> Result<(reqwest::StatusCode, Option<u64>), ApiError> {
+    let head = prep
+        .client
+        .head(prep.target.clone())
+        .header(ACCEPT_ENCODING, "identity")
+        .send()
+        .await
+        .map_err(|e| ApiError::Upstream(format!("探测文件信息失败：{e}")))?;
+    if head.status().is_success() {
+        if let Some(len) = content_length(head.headers()).filter(|&s| s > 0) {
+            return Ok((head.status(), Some(len)));
+        }
     }
+    let probe = prep
+        .client
+        .get(prep.target.clone())
+        .header(ACCEPT_ENCODING, "identity")
+        .header(RANGE, "bytes=0-0")
+        .send()
+        .await
+        .map_err(|e| ApiError::Upstream(format!("探测文件信息失败：{e}")))?;
+    let size = if probe.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+        size_from_content_range(probe.headers())
+    } else {
+        content_length(probe.headers())
+    };
+    Ok((probe.status(), size))
+}
+
+/// 取 URL 的路径部分（远端 URL 解析出 path；本地样例 /samples/ 在上游已拦截，不会走到这）。
+fn url_path_of(raw: &str) -> String {
     Url::parse(raw)
         .map(|u| u.path().to_string())
         .unwrap_or_default()

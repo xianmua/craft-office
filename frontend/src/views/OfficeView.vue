@@ -44,7 +44,9 @@
 
       <!-- 错误 -->
       <div v-else-if="errorText" class="h-full flex-center flex-col gap-3 px-6 text-center">
-        <ErrorCircleFilledIcon size="2.2rem" class="text-orange-500" />
+        <svg class="w-9 h-9 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V8a1 1 0 0 1 1-1zm0 9.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z" />
+        </svg>
         <p class="text-sm text-gray-600 m-0 max-w-xl leading-6">{{ errorText }}</p>
         <div class="flex gap-2 mt-1">
           <t-button size="small" variant="outline" @click="openLinkDialog">更换链接</t-button>
@@ -71,12 +73,13 @@
           <FanDock
             v-if="!assistantOpen && !settingsOpen"
             :busy="assistantBusy"
+            :engines="dockEngines"
             @action="onDockAction"
             @expand="assistantOpen = true"
           />
           <AssistantPanel
             :visible="assistantOpen"
-            :kernel="shellKernel"
+            :kernel="editorKernel"
             :bridge="assistantBridge"
             @update:visible="assistantOpen = $event"
             @busy="assistantBusy = $event"
@@ -105,15 +108,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, nextTick, ref } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
-import { ErrorCircleFilledIcon } from "tdesign-icons-vue-next";
 import KernelFrame from "@/components/KernelFrame.vue";
 import FallbackPreview from "@/components/FallbackPreview.vue";
 import FanDock from "@/components/FanDock.vue";
 import AssistantPanel from "@/components/AssistantPanel.vue";
 import SettingsPanel from "@/components/SettingsPanel.vue";
-import { setAiEngine } from "@/artcraft/aiEngine";
-import type { KernelBridge, ShellKernel } from "@/artcraft/shellAssistant";
-import { ensureCjkFont } from "@/artcraft/shellAssistant";
+import { setAiEngine, aiEngines } from "@/artcraft/aiEngine";
+import { ensureCjkFont, shellKernelIds, type KernelBridge } from "@/artcraft/shellAssistant";
 import { useDocSource, fileNameOf } from "@/composables/useDocSource";
 import { fetchBinary, fetchMeta, pushLatestSave } from "@/api/doc";
 import { fetchPlugins } from "@/api/plugins";
@@ -163,32 +164,31 @@ async function refreshEnabledPlugins() {
   }
 }
 
-/** 外壳 AI 助手：三内核统一走外壳运行时（内核侧插件系统已退役） */
-const SHELL_ASSISTANT_KERNELS: ShellKernel[] = ["wordcraft", "gridcraft", "deckcraft"];
+/** 外壳 AI 助手 gate：内核在注册表（kernels.json 数据驱动）+ ai-assistant 插件启用 */
 const shellAssistant = computed(
   () =>
-    SHELL_ASSISTANT_KERNELS.includes(editorKernel.value as ShellKernel) &&
+    shellKernelIds.value.includes(editorKernel.value) &&
     enabledIds.value.has("ai-assistant"),
 );
-const shellKernel = computed(() => editorKernel.value as ShellKernel);
 const assistantOpen = ref(false);
 const enabledIds = ref<Set<string>>(new Set());
 const settingsOpen = ref(false);
 const assistantBusy = ref(false);
 
-/** 竖条扇形菜单动作分发：引擎切换并开助手 / 保存 / 设置 */
-function onDockAction(key: "llm" | "dsh" | "save" | "settings") {
-  if (key === "llm") {
-    setAiEngine("deepseek");
-    assistantOpen.value = true;
-  } else if (key === "dsh") {
-    setAiEngine("dsh");
-    assistantOpen.value = true;
-  } else if (key === "save") {
+/** 扇形菜单引擎扇区：引擎注册表驱动（manifest.json engine 节插件即增），LLM/DSH/未来引擎共用同一映射 */
+const dockEngines = computed(() => aiEngines.value.map((e) => ({ id: e.id, label: e.label })));
+
+/** 竖条扇形菜单动作分发：选引擎并开助手 / 保存 / 设置 */
+function onDockAction(key: string) {
+  if (key === "save") {
     // 走内核 file.save 命令，宿主桥会收到保存事件并触发下载
     assistantBridge.value?.("execute", "file.save", {}).catch(() => {});
   } else if (key === "settings") {
     settingsOpen.value = true;
+  } else {
+    // 其余 key = 引擎 id
+    setAiEngine(key);
+    assistantOpen.value = true;
   }
 }
 
@@ -251,7 +251,7 @@ async function load() {
 function onKernelReady() {
   relay.toParent({ type: "artcraft:ready" });
   // wasm 进程无系统中文字体，就绪即装 CJK 兜底字体（每次刷新需重装）
-  void ensureCjkFont(editorKernel.value as ShellKernel, assistantBridge.value);
+  void ensureCjkFont(editorKernel.value, assistantBridge.value);
   if (!binary.value) return;
   kernelRef.value?.openDoc(fileName.value || "document.docx", binary.value);
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <!-- 贴边竖条（全局唯一入口）：可上下拖拽，点击展开面板；悬停向左扇形展开楔形菜单 -->
   <div
     class="fixed right-0 z-30"
@@ -46,11 +46,11 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { aiEngine } from '@/artcraft/aiEngine'
 
-defineProps<{ busy?: boolean }>()
-const emit = defineEmits<{ (e: 'action', key: FanKey): void; (e: 'expand'): void }>()
+const props = defineProps<{ busy?: boolean; engines?: Array<{ id: string; label: string }> }>()
+const emit = defineEmits<{ (e: 'action', key: string): void; (e: 'expand'): void }>()
 onBeforeUnmount(() => window.clearTimeout(closeTimer))
 
 // ---- 楔形扇形菜单（信息图样式）：SVG viewBox 240×240，圆心 (120,120) ----
@@ -71,22 +71,52 @@ const FAN_CX = 120
 const FAN_CY = 120
 const FAN_R0 = 40
 const FAN_R1 = 112
-const FAN_HALF = 21.5 // 半宽（度）：45° 扇区留 2° 缝隙
 const RC_OUT = 10 // 外角圆角半径
 const RC_IN = 6 // 内角圆角半径
-const FAN_ITEMS = [
-  { key: 'llm', label: 'LLM AI', mid: 112.5, color: '#F59E0B' },
-  { key: 'dsh', label: 'DSH AI', mid: 157.5, color: '#FBBF24' },
-  { key: 'save', label: '文件保存', mid: 202.5, color: '#FCD34D' },
-  { key: 'settings', label: '设置', mid: 247.5, color: '#FDE68A' },
-] as const
-type FanKey = (typeof FAN_ITEMS)[number]['key']
+
+interface FanItem {
+  key: string // 引擎扇区 = 引擎 id；功能扇区 = save/settings
+  label: string
+  mid: number // 扇区中心角（度）
+  color: string
+  engineId?: string
+}
+
+/** 菜单上限 5 块：3 引擎 + 文件保存 + 设置；引擎由注册表（manifest.json engine 节）驱动，不放即不出现 */
+const MAX_ENGINES = 3
+const engineCount = computed(() => Math.min(props.engines?.length ?? 0, MAX_ENGINES))
+
+/** 扇区动态生成：AI 引擎（注册表驱动，新引擎自动出现）+ 文件保存 + 设置，平分 180° 半圆 */
+const FAN_ITEMS = computed<FanItem[]>(() => {
+  const engines = (props.engines ?? []).slice(0, MAX_ENGINES)
+  const n = engines.length + 2
+  const step = 180 / n
+  const colors = ['#F59E0B', '#FBBF24', '#FCD34D', '#FDE68A', '#FEF3C7']
+  const items: FanItem[] = engines.map((e, i) => ({
+    key: e.id,
+    label: e.label,
+    engineId: e.id,
+    mid: 90 + step / 2 + i * step,
+    color: colors[i % colors.length],
+  }))
+  items.push(
+    { key: 'save', label: '文件保存', mid: 90 + step / 2 + engines.length * step, color: colors[engines.length % colors.length] },
+    { key: 'settings', label: '设置', mid: 90 + step / 2 + (engines.length + 1) * step, color: colors[(engines.length + 1) % colors.length] },
+  )
+  return items
+})
+/** 扇区半宽（度）：随扇区数缩放，留 2° 缝隙 */
+function fanHalf(): number {
+  const n = engineCount.value + 2
+  return 180 / n / 2 - 1
+}
 
 /** 圆角楔形扇环 path：径向直边 + 内外弧，四个角用二次贝塞尔倒圆 */
 function wedgePath(mid: number): string {
+  const half = fanHalf()
   const rad = (d: number) => (d * Math.PI) / 180
-  const a0 = rad(mid - FAN_HALF)
-  const a1 = rad(mid + FAN_HALF)
+  const a0 = rad(mid - half)
+  const a1 = rad(mid + half)
   const thOut = RC_OUT / FAN_R1 // 外弧上倒角对应的角度
   const thIn = RC_IN / FAN_R0
   const p = (r: number, a: number) =>
@@ -114,13 +144,11 @@ function fanText(mid: number): { x: number; y: number } {
 }
 
 /** 当前引擎所在扇区画白圈标识 */
-function fanActive(m: { key: FanKey }): boolean {
-  return (
-    (m.key === 'llm' && aiEngine.value === 'deepseek') || (m.key === 'dsh' && aiEngine.value === 'dsh')
-  )
+function fanActive(m: FanItem): boolean {
+  return !!m.engineId && m.engineId === aiEngine.value
 }
 
-function onFan(m: { key: FanKey }) {
+function onFan(m: FanItem) {
   menuOpen.value = false
   emit('action', m.key)
 }

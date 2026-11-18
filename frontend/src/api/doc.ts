@@ -5,18 +5,7 @@ export interface DocMeta {
   supported: boolean
 }
 
-import { apiUrl } from './base'
-
-/** 后端统一错误体：{ code, message } */
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = await res.json()
-    if (body?.message) return `${body.message}（HTTP ${res.status}）`
-  } catch {
-    /* 非 JSON 响应 */
-  }
-  return `请求失败（HTTP ${res.status}）`
-}
+import { apiUrl, readError } from './base'
 
 export async function fetchMeta(url: string, signal?: AbortSignal): Promise<DocMeta> {
   const res = await fetch(`${apiUrl('doc/meta')}?url=${encodeURIComponent(url)}`, { signal })
@@ -28,11 +17,6 @@ export async function fetchBinary(url: string, signal?: AbortSignal): Promise<Ar
   const res = await fetch(`${apiUrl('doc/proxy')}?url=${encodeURIComponent(url)}`, { signal })
   if (!res.ok) throw new Error(await readError(res))
   return res.arrayBuffer()
-}
-
-/** 走代理的下载地址（强制 attachment，避免签名直链暴露给浏览器） */
-export function downloadUrl(url: string): string {
-  return `${apiUrl('doc/proxy')}?url=${encodeURIComponent(url)}&download=1`
 }
 
 /** 保存上报禁用标记：后端未配 SAVE_API_TOKEN（403）或不可达时置位，本次会话不再重试 */

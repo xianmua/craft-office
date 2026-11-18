@@ -1,0 +1,102 @@
+<mxfile host="65bd71144e">
+    <diagram id="artcraft-arch" name="ArtCraft 架构">
+        <mxGraphModel dx="166" dy="197" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="819" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="t1" value="内核层（wasm，同源 iframe 独立运行）" style="text;fontSize=13;fontColor=#666666" parent="1" vertex="1">
+                    <mxGeometry x="380" y="10" width="320" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="k1" value="wordcraft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="46" width="200" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="k2" value="gridcraft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="46" width="200" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="k3" value="deckcraft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="550" y="46" width="200" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="k4" value="more..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="790" y="46" width="200" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="lib" value="craft-libs · craft-i18n …&#10;&#10;编译期源码级共享，各内核锁独立 rev（gridcraft=aa84415，word/deck=fd5e2fe），无运行时通信" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="156" width="920" height="66" as="geometry"/>
+                </mxCell>
+                <mxCell id="ek1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#666666;endArrow=block;exitX=0.5;exitY=1;entryX=0.11;entryY=0;" parent="1" source="k1" target="lib" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ek2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#666666;endArrow=block;exitX=0.5;exitY=1;entryX=0.37;entryY=0;" parent="1" source="k2" target="lib" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ek3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#666666;endArrow=block;exitX=0.5;exitY=1;entryX=0.63;entryY=0;" parent="1" source="k3" target="lib" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ecmd" value="window.&lt;app&gt; 页面命令 API&lt;br&gt;execute / docInspect / file.save …" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#D79B00;fontSize=12;endArrow=block;exitX=1;exitY=0.25;entryX=1;entryY=0.5;" parent="1" source="shell" target="k4" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1060" y="320"/>
+                            <mxPoint x="1060" y="75"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="shell" value="外壳 Vue · /office" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;align=left;spacingLeft=12;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="300" width="920" height="118" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1" value="KernelFrame&#10;&#10;iframe 托管 · openDoc 投递" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" parent="shell" vertex="1">
+                    <mxGeometry x="30" y="42" width="190" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2" value="AssistantPanel&#10;&#10;对话 · 思考过程 · 会话" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" parent="shell" vertex="1">
+                    <mxGeometry x="240" y="42" width="190" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3" value="FanDock&#10;&#10;扇形菜单（engine.json 驱动）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" parent="shell" vertex="1">
+                    <mxGeometry x="450" y="42" width="190" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4" value="SettingsPanel&#10;&#10;引擎手风琴（注册表渲染）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" parent="shell" vertex="1">
+                    <mxGeometry x="660" y="42" width="190" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="esrv" value="HTTP /api/*　·　SSE /api/ai/chat&#10;&#10;文档字节经 /api/doc 代理拉取后 openDoc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;fontColor=#666666;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="shell" target="srv" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="srv" value="server（Rust 单进程 · 单端口 7778）　发布 = 前端产物入 backend/static + assets 整包随行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;align=left;spacingLeft=12;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="516" width="920" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="v1" value="静态托管内核&#10;&#10;/wordcraft /gridcraft /deckcraft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" parent="srv" vertex="1">
+                    <mxGeometry x="30" y="48" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="v2" value="/api/doc&#10;&#10;远程文档代理 · 白名单" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" parent="srv" vertex="1">
+                    <mxGeometry x="250" y="48" width="170" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="v3" value="/api/ai&#10;&#10;LLM / DSH 双引擎网关" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" parent="srv" vertex="1">
+                    <mxGeometry x="440" y="48" width="170" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="v4" value="/api/plugins/file · /api/skills · /api/assets/file&#10;&#10;资源读取唯一出口 · 防穿越校验" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" parent="srv" vertex="1">
+                    <mxGeometry x="630" y="48" width="260" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="eres" value="两级查找&#10;项目级优先" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D79B00;strokeWidth=2;fontColor=#D79B00;fontSize=12;endArrow=block;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" parent="1" source="assets" target="srv" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="assets" value="assets/ 资源容器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;align=center;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1090" y="430" width="250" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="a1" value="plugins/（engine.json · kernels.json）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=12;" parent="assets" vertex="1">
+                    <mxGeometry x="20" y="40" width="210" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="a2" value="skills/（SKILL.md）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=12;" parent="assets" vertex="1">
+                    <mxGeometry x="20" y="84" width="210" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="a3" value="commands/（命令目录 json）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=12;" parent="assets" vertex="1">
+                    <mxGeometry x="20" y="128" width="210" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="euser" value="整包拷贝即迁移" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#999999;dashed=1;fontSize=11;fontColor=#999999;endArrow=block;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" parent="1" source="user" target="assets" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user" value="~/.craft-office/assets/&#10;用户级扩展" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;fontSize=12;fontColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="1090" y="680" width="250" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="t2" value="关键约束：① 前端不直读 assets，一切经 server API（校验与两级优先级集中一处）　② 内核不读 assets，AI 资产由外壳拼装后以命令打入　③ 内核定制全部走外壳/声明文件，不改内核源码" style="text;fontSize=12;fontColor=#666666;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="700" width="980" height="40" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

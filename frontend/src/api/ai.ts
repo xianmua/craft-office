@@ -8,9 +8,9 @@ export interface ChatMessage {
   content: string
 }
 
-import { apiUrl } from './base'
+import { apiUrl, readError } from './base'
 
-/** AI 引擎 id：内置 deepseek + 插件引擎（plugins 目录下 engine.json 声明，如 dsh） */
+/** AI 引擎 id：内置 deepseek + 插件引擎（plugins 目录下 manifest.json engine 节声明，如 dsh-ai） */
 export type AiEngine = string
 
 /** 流式对话：onDelta 逐段回调增量正文，onReason 回调推理思考增量（混合推理模型才有），
@@ -31,14 +31,7 @@ export async function chatStream(
     signal,
   })
   if (!res.ok || !res.body) {
-    let detail = `HTTP ${res.status}`
-    try {
-      const body = await res.json()
-      if (body?.message) detail = body.message
-    } catch {
-      /* 非 JSON 错误体 */
-    }
-    throw new Error(detail)
+    throw new Error(await readError(res))
   }
 
   const reader = res.body.getReader()
@@ -86,7 +79,7 @@ export async function chatStream(
 
 // ===== 设置面板：引擎配置读写（key 只回脱敏掩码）=====
 
-/** 引擎视图：meta（插件 engine.json 声明）+ 当前配置（未配置时后三项缺省） */
+/** 引擎视图：meta（插件 manifest.json engine 节声明）+ 当前配置（未配置时后三项缺省） */
 export interface EngineConfigView {
   id: AiEngine
   label: string
@@ -119,14 +112,7 @@ export async function updateAiConfig(
     body: JSON.stringify({ engine, ...patch }),
   })
   if (!res.ok) {
-    let detail = `HTTP ${res.status}`
-    try {
-      const body = await res.json()
-      if (body?.message) detail = body.message
-    } catch {
-      /* 非 JSON 错误体 */
-    }
-    throw new Error(detail)
+    throw new Error(await readError(res))
   }
   return res.json()
 }

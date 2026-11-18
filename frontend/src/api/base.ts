@@ -17,3 +17,14 @@ export function apiUrl(path: string): string {
 export function kernelUrl(path: string): string {
   return withBase(path)
 }
+
+/** 后端统一错误体：{ code, message } → 提示文本 */
+export async function readError(res: Response): Promise<string> {
+  try {
+    const body = await res.json()
+    if (body?.message) return `${body.message}（HTTP ${res.status}）`
+  } catch {
+    /* 非 JSON 响应 */
+  }
+  return `请求失败（HTTP ${res.status}）`
+}

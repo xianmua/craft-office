@@ -29,12 +29,10 @@ let kernelReady = false
 const pending: Array<{ name: string; bytes: ArrayBuffer }> = []
 
 function onMessage(event: MessageEvent) {
-  console.log('[kf] message', event.origin, typeof event.data, JSON.stringify(event.data))
   if (event.origin !== location.origin) return
   // 不做 event.source 与 iframe.contentWindow 的严格比对：内核加载期间 iframe 可能被
   // Vue 重建，旧内核窗口的迟发消息会被误丢；同源 + 消息类型前缀已足够过滤。
   const parsed = parseKernelMessage(props.kernel, event.data)
-  console.log('[kf] parsed kernel=', JSON.stringify(props.kernel), '->', JSON.stringify(parsed))
   if (!parsed) return
   switch (parsed.type) {
     case 'ready':
@@ -91,5 +89,5 @@ function call(method: string, ...args: unknown[]): Promise<unknown> {
 onMounted(() => window.addEventListener('message', onMessage))
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 
-defineExpose({ openDoc, call, kernelApi })
+defineExpose({ openDoc, call })
 </script>

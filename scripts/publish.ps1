@@ -24,19 +24,19 @@ if (-not (Test-Path "$root\backend\static\index.html")) {
   throw "backend\static\index.html missing; first run: cd frontend && npm run build (+ kernel deploy scripts)"
 }
 
-# 3) stage the bundle (runtime paths are cwd-relative: ./static ./samples ./plugins)
+# 3) stage the bundle (runtime paths are cwd-relative: ./static ./samples ./assets)
 $stage = "$env:TEMP\artcraft-publish"
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory "$stage\artcraft-office" | Out-Null
 Copy-Item $exe "$stage\artcraft-office\"
 robocopy "$root\backend\static" "$stage\artcraft-office\static" /E /XF .trunk-lock /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -gt 7) { throw "robocopy static failed $LASTEXITCODE" }
-Copy-Item "$root\plugins" "$stage\artcraft-office\plugins" -Recurse
+Copy-Item "$root\assets" "$stage\artcraft-office\assets" -Recurse
 if (Test-Path "$root\backend\samples") { Copy-Item "$root\backend\samples" "$stage\artcraft-office\samples" -Recurse }
 Copy-Item "$root\backend\.env.example" "$stage\artcraft-office\.env.example"
-# config template: the bundle runs the exe at the root, so dev_dir ../plugins -> ./plugins
+# config template: the bundle runs the exe at the root, so dev_dir ../assets/plugins -> ./assets/plugins
 $cfg = Get-Content "$root\backend\config.toml.example" -Raw -Encoding UTF8
-$cfg = $cfg -replace 'dev_dir = "\.\./plugins"', 'dev_dir = "./plugins"'
+$cfg = $cfg -replace 'dev_dir = "\.\./assets/plugins"', 'dev_dir = "./assets/plugins"'
 [IO.File]::WriteAllText("$stage\artcraft-office\config.toml.example", $cfg, (New-Object System.Text.UTF8Encoding($false)))
 
 # 4) zip

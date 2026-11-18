@@ -132,6 +132,15 @@ fn read_installed(cfg: &AppConfig) -> Vec<InstalledEntry> {
     }
 }
 
+/// 禁用集合：installed.json 里 enabled=false 的 id；文件无记录的插件缺省启用，消费方按「不在禁用集合即可用」判断。
+pub(crate) fn disabled_set(cfg: &AppConfig) -> std::collections::HashSet<String> {
+    read_installed(cfg)
+        .into_iter()
+        .filter(|e| !e.enabled)
+        .map(|e| e.id)
+        .collect()
+}
+
 /// 原子写入：先写临时文件再改名，避免并发写坏 installed.json。
 fn write_installed(cfg: &AppConfig, entries: &[InstalledEntry]) -> Result<(), ApiError> {
     let path = installed_path(cfg);
@@ -252,12 +261,33 @@ fn valid_id(id: &str) -> bool {
     !id.is_empty() && !id.contains('/') && !id.contains('\\') && !id.contains("..")
 }
 
+/// 相对路径校验：扩展名白名单 + 禁反斜杠/.. + 最多 3 段且每段非空，防目录穿越。
+fn valid_rel_path(name: &str, allowed: &[&str]) -> bool {
+    let ext_ok = std::path::Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| allowed.contains(&e))
+        .unwrap_or(false);
+    ext_ok && !name.contains('\\') && !name.contains("..")
+        && name.split('/').count() <= 3
+        && name.split('/').all(|s| !s.is_empty())
+}
+
+fn file_mime(name: &str) -> &'static str {
+    if name.ends_with(".js") {
+        "text/javascript; charset=utf-8"
+    } else if name.ends_with(".json") {
+        "application/json; charset=utf-8"
+    } else {
+        "text/plain; charset=utf-8"
+    }
+}
+
 /// 下发插件文件（JS/manifest/agent.md/skills 等），供宿主页面加载；项目级优先。
-/// file= 限插件目录内相对路径（最多 3 段、每段非空，如 skills/word/SKILL.md；白名单后缀），防目录穿越。
 #[get("/api/plugins/file")]
 pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
     let id = q.id.trim();
-    if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
+    if !valid_id(id) {
         return Err(ApiError::Internal("非法插件 id".to_string()));
     }
     let plugins = all_plugins(&cfg)?;
@@ -266,29 +296,17 @@ pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>
         .find(|m| m.id == id)
         .ok_or_else(|| ApiError::Internal(format!("市场里没有插件：{id}")))?;
     let name = q.file.as_deref().map(str::trim).filter(|s| !s.is_empty()).unwrap_or(&entry.file);
-    const ALLOWED: [&str; 4] = ["js", "md", "txt", "json"];
-    let ext_ok = std::path::Path::new(name)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| ALLOWED.contains(&e))
-        .unwrap_or(false);
-    if !ext_ok
-        || name.contains('\\')
-        || name.contains("..")
-        || name.split('/').count() > 3
-        || name.split('/').any(|s| s.is_empty())
-    {
+    if !valid_rel_path(name, &["js", "md", "txt", "json"]) {
         return Err(ApiError::Internal("非法文件名".to_string()));
     }
     let base = if entry.source == "project" { dev_dir(&cfg) } else { data_dir(&cfg) };
     let file = base.join(id).join(name);
     let code = std::fs::read_to_string(file)
         .map_err(|e| ApiError::Internal(format!("读取插件 {id}/{name} 失败：{e}")))?;
-    let mime = if name.ends_with(".js") { "text/javascript; charset=utf-8" } else if name.ends_with(".json") { "application/json; charset=utf-8" } else { "text/plain; charset=utf-8" };
-    Ok(HttpResponse::Ok().content_type(mime).body(code))
+    Ok(HttpResponse::Ok().content_type(file_mime(name)).body(code))
 }
 
-/// 共享技能库：项目级 skills/（打包内置）+ 用户级 ~/.craft-office/skills（扩展），
+/// 共享技能库：项目级 assets/skills/（打包内置）+ 用户级 ~/.craft-office/assets/skills（扩展），
 /// 同名文件项目级优先；任意 AI 消费方经 GET /api/skills?file=<name>/<file> 引用。
 /// 校验与 plugin_file 同款：扩展名白名单 + 禁反斜杠/.. + 深度限制，防路径穿越。
 #[derive(Debug, Deserialize)]
@@ -299,33 +317,56 @@ pub struct SkillOp {
 
 #[get("/api/skills")]
 pub async fn skill_file(q: web::Query<SkillOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
-    let name = q.file.trim();
-    const ALLOWED: [&str; 2] = ["md", "txt"];
-    let ext_ok = std::path::Path::new(name)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| ALLOWED.contains(&e))
-        .unwrap_or(false);
-    if !ext_ok
-        || name.contains('\\')
-        || name.contains("..")
-        || name.split('/').count() > 3
-        || name.split('/').any(|s| s.is_empty())
-    {
-        return Err(ApiError::Internal("非法技能文件名".to_string()));
-    }
-    // 查找顺序：项目级 skills/（与 dev_dir 同级的顶层目录）→ 用户级 ~/.craft-office/skills（data_dir 同级）
-    let project_root = Path::new(&cfg.plugins.dev_dir).parent().unwrap_or(Path::new(".")).join("skills");
-    let user_root = Path::new(&cfg.plugins.data_dir)
+    // 查找顺序：项目级 assets/skills（dev_dir 同级）→ 用户级 assets/skills（data_dir 同级）
+    let file = find_resource(&cfg, "skills", &q.file, &["md", "txt"])
+        .ok_or_else(|| ApiError::Internal(format!("技能不存在：{}", q.file)))?;
+    let code = std::fs::read_to_string(file)
+        .map_err(|e| ApiError::Internal(format!("读取技能 {} 失败：{e}", q.file)))?;
+    Ok(HttpResponse::Ok().content_type("text/plain; charset=utf-8").body(code))
+}
+
+/// 资源根目录：项目级 = dev_dir 同级（assets/），用户级 = data_dir 同级（~/.craft-office/assets/）。
+/// 整个 assets/ 目录可原样拷贝到用户级完成配置迁移。
+fn project_resources(cfg: &AppConfig) -> PathBuf {
+    Path::new(&cfg.plugins.dev_dir).parent().unwrap_or(Path::new(".")).to_path_buf()
+}
+
+fn user_resources(cfg: &AppConfig) -> PathBuf {
+    Path::new(&cfg.plugins.data_dir)
         .parent()
         .unwrap_or_else(|| Path::new(&cfg.plugins.data_dir))
-        .join("skills");
-    let file = [project_root, user_root]
+        .to_path_buf()
+}
+
+/// 两级资源查找：先项目级 <root>/<sub>/<name>，再用户级（同名项目级优先）。
+/// sub 与 name 均过防穿越校验；不合法返回 None。
+fn find_resource(cfg: &AppConfig, sub: &str, name: &str, allowed: &[&str]) -> Option<PathBuf> {
+    if !valid_id(sub) || !valid_rel_path(name, allowed) {
+        return None;
+    }
+    [project_resources(cfg), user_resources(cfg)]
         .iter()
-        .map(|root| root.join(name))
-        .find(|p| p.is_file());
-    let file = file.ok_or_else(|| ApiError::Internal(format!("技能不存在：{name}")))?;
-    let code = std::fs::read_to_string(file)
-        .map_err(|e| ApiError::Internal(format!("读取技能 {name} 失败：{e}")))?;
-    Ok(HttpResponse::Ok().content_type("text/plain; charset=utf-8").body(code))
+        .map(|root| root.join(sub).join(name))
+        .find(|p| p.is_file())
+}
+
+/// 共享资源文件：GET /api/assets/file?path=<sub>/<name>（如 commands/commands-gridcraft.json）。
+/// 命令目录等跨插件共享资源从插件目录抽出后经此下发，两级查找规则与 /api/skills 一致。
+#[derive(Debug, Deserialize)]
+pub struct ResourceOp {
+    /// assets/ 目录内相对路径（如 commands/commands-gridcraft.json）
+    pub path: String,
+}
+
+#[get("/api/assets/file")]
+pub async fn resource_file(q: web::Query<ResourceOp>, cfg: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
+    let (sub, name) = match q.path.trim().split_once('/') {
+        Some((s, n)) if !s.is_empty() && !n.is_empty() => (s, n),
+        _ => return Err(ApiError::Internal("非法资源路径".to_string())),
+    };
+    let file = find_resource(&cfg, sub, name, &["json", "md", "txt"])
+        .ok_or_else(|| ApiError::Internal(format!("资源不存在：{}", q.path)))?;
+    let code = std::fs::read_to_string(&file)
+        .map_err(|e| ApiError::Internal(format!("读取资源 {} 失败：{e}", q.path)))?;
+    Ok(HttpResponse::Ok().content_type(file_mime(name)).body(code))
 }

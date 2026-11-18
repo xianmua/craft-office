@@ -1,0 +1,14 @@
+{
+  "id": "dsh-ai",
+  "type": "ai-engine",
+  "name": "DSH AI",
+  "version": "0.1.0",
+  "description": "本机 dsh-apis-plugin，OpenAI 兼容端点",
+  "engine": {
+    "protocol": "openai",
+    "defaultBaseUrl": "http://127.0.0.1:3088/v1",
+    "defaultModel": "",
+    "keyRequired": false,
+    "envPrefix": "DSH"
+  }
+}

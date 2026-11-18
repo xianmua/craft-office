@@ -186,39 +186,5 @@ fn api_err(e: ApiError) -> Value {
 }
 
 async fn head_size(prep: &doc::Prepared) -> Option<u64> {
-    // HEAD 拿不到（或为 0）时降级 Range 探测，与 /api/doc/meta 的行为一致
-    let head = prep
-        .client
-        .head(prep.target.clone())
-        .header(reqwest::header::ACCEPT_ENCODING, "identity")
-        .send()
-        .await
-        .ok()?;
-    let head_len = head.content_length().filter(|s| *s > 0);
-    if head_len.is_some() {
-        return head_len;
-    }
-    let probe = prep
-        .client
-        .get(prep.target.clone())
-        .header(reqwest::header::ACCEPT_ENCODING, "identity")
-        .header(reqwest::header::RANGE, "bytes=0-0")
-        .send()
-        .await
-        .ok()?;
-    let probe_status = probe.status();
-    if probe_status == reqwest::StatusCode::PARTIAL_CONTENT {
-        // 206：content_length 是分片长度（1），总长只能从 Content-Range 取
-        return size_from_content_range(probe.headers());
-    }
-    probe
-        .content_length()
-        .filter(|s| *s > 0)
-}
-
-/// 解析 `Content-Range: bytes 0-0/12345`
-fn size_from_content_range(headers: &reqwest::header::HeaderMap) -> Option<u64> {
-    let raw = headers.get(reqwest::header::CONTENT_RANGE)?.to_str().ok()?;
-    let total = raw.rsplit('/').next()?.trim();
-    total.parse::<u64>().ok()
+    doc::probe_size(prep).await.ok()?.1
 }

@@ -20,21 +20,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-cors"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2aff07ada3254fc02618cb7850da91dceb23b5dbda53c6676ccbb28ba504f150"
-dependencies = [
- "actix-utils",
- "actix-web",
- "derive_more",
- "futures-util",
- "log",
- "once_cell",
- "smallvec",
-]
-
-[[package]]
 name = "actix-files"
 version = "0.6.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -266,13 +251,11 @@ dependencies = [
 name = "artcraft-office"
 version = "0.1.0"
 dependencies = [
- "actix-cors",
  "actix-files",
  "actix-web",
  "dotenvy",
  "futures-util",
  "ipnet",
- "mime",
  "reqwest",
  "serde",
  "serde_json",
@@ -282,7 +265,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "url",
  "zip",
 ]
 

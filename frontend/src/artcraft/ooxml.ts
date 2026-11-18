@@ -68,6 +68,17 @@ function previewDocx(entries: Record<string, Uint8Array>, notes: string[]): Prev
   return paragraphs.slice(0, MAX_PARAGRAPHS)
 }
 
+/** 0 基列号 → 列名（0 → A，25 → Z，26 → AA） */
+export function colName(n: number): string {
+  let s = ''
+  while (n > 0) {
+    const r = (n - 1) % 26
+    s = String.fromCharCode(65 + r) + s
+    n = Math.floor((n - 1) / 26)
+  }
+  return s
+}
+
 export function colIndex(ref: string): number {
   const letters = ref.replace(/[^A-Z]/g, '')
   let n = 0

@@ -100,6 +100,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::plugins::enable_plugin)
             .service(routes::plugins::plugin_file)
             .service(routes::plugins::skill_file)
+            .service(routes::plugins::resource_file)
             .service(routes::page::health)
             .service(routes::page::office_root)
             .default_service(web::to(routes::page::spa_fallback))

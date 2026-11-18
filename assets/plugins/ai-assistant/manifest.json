@@ -1,5 +1,6 @@
 {
   "id": "ai-assistant",
+  "type": "assistant",
   "name": "AI 助手",
   "version": "0.5.0",
   "description": "对话式 AI 助手：总结、润色、改写、续写，结果可直接写回文档。三内核统一由外壳（/office 宿主层）经官方页面命令 API 承接。",

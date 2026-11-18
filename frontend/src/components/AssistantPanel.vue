@@ -42,7 +42,16 @@
       >
         <div class="flex items-center justify-between gap-2">
           <span class="text-sm text-gray-700 truncate">{{ sessionTitle(s) }}</span>
-          <span class="text-xs text-gray-400 shrink-0">{{ sessionDate(s.createdAt) }}</span>
+          <span class="flex items-center gap-1.5 shrink-0">
+            <span class="text-xs text-gray-400">{{ sessionDate(s.createdAt) }}</span>
+            <!-- 删除会话：两段式二次确认（首点变红，3 秒内再点执行） -->
+            <span
+              class="w-4 text-center cursor-pointer select-none"
+              :class="confirmDel === s.id ? 'text-red-500 font-semibold' : 'text-gray-300 hover:text-red-400'"
+              :title="confirmDel === s.id ? '再点一次确认删除' : '删除会话'"
+              @click.stop="removeSession(s.id)"
+            >{{ confirmDel === s.id ? '✓' : '×' }}</span>
+          </span>
         </div>
         <div class="text-xs text-gray-400 mt-0.5 truncate">{{ s.id }}</div>
       </div>
@@ -60,13 +69,18 @@
         :class="m.role === 'user' ? 'text-right' : 'text-left'"
       >
         <span
-          class="inline-block text-left px-3 py-2 rounded-lg max-w-[92%]"
+          class="inline-block text-left px-3 py-2 rounded-lg w-[95%]"
           :class="m.role === 'user' ? 'bg-blue-50' : 'bg-gray-100'"
         >
-          <!-- 思考折叠组：收起只显示「思考」二字，点开看完整推理 -->
-          <details v-if="m.thinking" class="think mb-1">
-            <summary>思考</summary>
-            <div class="text-xs text-gray-400 leading-5 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{{ m.thinking }}</div>
+          <!-- 思考过程折叠组：位于回复上方；运行中实时逐行展示（无标题），完成后折叠为「已思考」 -->
+          <details v-if="m.thinking" class="think mb-1" :open="busy && i === messages.length - 1">
+            <summary v-if="!(busy && i === messages.length - 1)">已思考</summary>
+            <div
+              :ref="busy && i === messages.length - 1 ? setThinkRef : undefined"
+              class="text-xs text-gray-400 leading-5 mt-1 max-h-40 overflow-y-auto"
+            >
+              <div v-for="(line, li) in thinkLines(m.thinking)" :key="li">{{ line }}</div>
+            </div>
           </details>
           {{ m.text || (m.activity ? '' : '…') }}
           <!-- 运行中动作小字 -->
@@ -74,6 +88,8 @@
             <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>{{ m.activity }}
           </span>
         </span>
+        <!-- 回复用时：完成后气泡左侧小字 -->
+        <div v-if="m.elapsed" class="text-[11px] text-gray-300 mt-0.5">{{ m.elapsed }}s</div>
       </div>
       <p v-if="error" class="text-sm text-red-500 m-0">{{ error }}</p>
     </div>
@@ -134,25 +150,21 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SidePanel from '@/components/SidePanel.vue'
 import type { AiEngine, ChatMessage } from '@/api/ai'
-import { converse, replySummary, type KernelBridge, type ShellKernel } from '@/artcraft/shellAssistant'
+import { converse, replySummary, kernelDesc, type KernelBridge, type ShellKernel } from '@/artcraft/shellAssistant'
 import { aiEngine, aiEngines, ensureEngines, setAiEngine } from '@/artcraft/aiEngine'
 
 const props = defineProps<{ visible: boolean; kernel: ShellKernel; bridge: KernelBridge | null }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'busy', v: boolean): void }>()
 
-/** 按内核显示示例指令 */
-const HINTS: Record<ShellKernel, string> = {
-  wordcraft: '试试：「在文档末尾加一句…」「把第一段加粗」「把所有『旧词』替换成『新词』」。',
-  gridcraft: '试试：「把 B2 改成 9999」「按收入从高到低排序」「给表头加粗并填充底色」。',
-  deckcraft: '试试：「把第 1 页标题改成…」「新增一页标题加两个要点」「给标题加粗」。',
-}
-const hints = computed(() => HINTS[props.kernel])
+/** 示例指令：来自内核注册表（kernels.json hints 字段） */
+const hints = computed(() => kernelDesc(props.kernel)?.hints ?? '')
 
 interface Msg {
   role: 'user' | 'assistant'
   text: string
-  thinking?: string // 模型推理思考（折叠展示）
+  thinking?: string // 模型推理思考（运行中逐行实时展示，完成后折叠）
   activity?: string // 运行中当前小动作（思考中 / 执行命令）
+  elapsed?: number // 本轮回复用时（秒，一位小数）
 }
 const messages = ref<Msg[]>([])
 const history = ref<ChatMessage[]>([]) // OpenAI 兼容历史（不含 system）
@@ -231,6 +243,28 @@ function newSession() {
   view.value = 'chat'
 }
 
+/** 删除会话：两段式确认（首点标记 3 秒内再点执行）；删当前会话则直接清空现场不回写 */
+const confirmDel = ref('')
+let delTimer: ReturnType<typeof setTimeout> | undefined
+function removeSession(id: string) {
+  if (confirmDel.value !== id) {
+    confirmDel.value = id
+    clearTimeout(delTimer)
+    delTimer = setTimeout(() => (confirmDel.value = ''), 3000)
+    return
+  }
+  confirmDel.value = ''
+  clearTimeout(delTimer)
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(loadSessions().filter((s) => s.id !== id)))
+  if (id === sid.value) {
+    sid.value = ''
+    messages.value = []
+    history.value = []
+    view.value = 'chat'
+  }
+  refreshSessions()
+}
+
 /** busy 同步给竖条呼吸点 */
 watch(busy, (v) => emit('busy', v))
 
@@ -259,6 +293,23 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 const listRef = ref<HTMLElement>()
 const inputRef = ref<HTMLTextAreaElement>()
 let ctrl: AbortController | null = null
+
+/** 思考过程逐行拆分（空行丢弃）与运行中自动滚底 */
+function thinkLines(t: string): string[] {
+  return t.split('\n').map((s) => s.trim()).filter(Boolean)
+}
+const thinkRef = ref<HTMLElement>()
+function setThinkRef(el: unknown) {
+  thinkRef.value = el as HTMLElement
+}
+watch(
+  () => messages.value[messages.value.length - 1]?.thinking,
+  async () => {
+    await nextTick()
+    const el = thinkRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  },
+)
 
 async function scrollBottom() {
   await nextTick()
@@ -293,6 +344,7 @@ function onSend() {
   void scrollBottom()
 
   ctrl = new AbortController()
+  const t0 = Date.now()
   converse({
     kernel: props.kernel,
     bridge: props.bridge,
@@ -316,7 +368,10 @@ function onSend() {
       const shown = replySummary(reply)
       if (shown) messages.value[live].text = shown
       else messages.value.splice(live, 1)
-      if (messages.value[live]) messages.value[live].activity = ''
+      if (messages.value[live]) {
+        messages.value[live].activity = ''
+        messages.value[live].elapsed = Math.round((Date.now() - t0) / 100) / 10
+      }
       busy.value = false
       ctrl = null
       persistSession()
@@ -351,5 +406,20 @@ function onSend() {
 }
 .think summary:hover {
   color: #6b7280;
+}
+/* 思考滚动区：细滚动条，悬停才加深 */
+.think div::-webkit-scrollbar {
+  width: 4px;
+}
+.think div::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+.think div:hover::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+.think div {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
 }
 </style>

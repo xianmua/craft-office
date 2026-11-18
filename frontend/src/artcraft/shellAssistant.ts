@@ -1,26 +1,63 @@
 /**
  * 外壳插件运行时（阶段 6 gridcraft → 阶段 7 deckcraft/wordcraft）：
- * AI 助手从内核侧迁到 /office Vue 层——提示词/命令目录经 /api/plugins/file 拉取，技能指南经 /api/skills 拉取（顶层共享 skills/），
+ * AI 助手从内核侧迁到 /office Vue 层——提示词/注册表经 /api/plugins/file 拉取，技能/命令目录经 /api/skills、/api/assets/file 拉取（assets/ 共享目录），
  * 文档上下文与命令执行走官方页面命令 API（iframe contentWindow.window.<app>，
  * 经 KernelFrame.call 薄代理）。协议与内核侧插件一致：<cmd>[…]</cmd> 按序执行；
  * wordcraft 另承接 <write> 写回（含 page 定位，原内核插件宿主职责）。
  */
 
+import { computed, ref } from 'vue'
 import type { ChatMessage } from '@/api/ai'
 import { chatStream, type AiEngine } from '@/api/ai'
 import { apiUrl, kernelUrl } from '@/api/base'
+import { colName } from '@/artcraft/ooxml'
 
 /** 内核页面命令 API 桥：见 KernelFrame.call */
 export type KernelBridge = (method: string, ...args: unknown[]) => Promise<unknown>
 
-/** 外壳运行时支持的内核及各自插件文件（skill 为数组：本内核技能在前，全量注入见 skillGuide） */
-export const SHELL_KERNELS = {
-  wordcraft: { prompt: 'agent.md', skill: ['word/SKILL.md'], catalog: 'commands.json' },
-  gridcraft: { prompt: 'agent-excel.md', skill: ['excel/SKILL.md'], catalog: 'commands-gridcraft.json' },
-  deckcraft: { prompt: 'agent-pptx.md', skill: ['pptx/SKILL.md'], catalog: 'commands-deckcraft.json' },
-} as const
+/** 内核 id 即 ShellKernel（数据驱动，注册表见 assets/plugins/ai-assistant/kernels.json） */
+export type ShellKernel = string
 
-export type ShellKernel = keyof typeof SHELL_KERNELS
+/** 声明式内核描述：接新内核只需在 kernels.json 加条目 + 放 prompt/skill/catalog 文件，前端零改码 */
+export interface KernelDesc {
+  id: string
+  /** 插件内 system prompt 文件 */
+  prompt: string
+  /** assets/skills/ 共享技能库下的技能文件 */
+  skills: string[]
+  /** 插件内命令目录 json */
+  catalog: string
+  /** 文档上下文格式化器（内置三种：grid=表格数据 / deck=幻灯片形状 / word=全文块+分页） */
+  context: 'grid' | 'deck' | 'word'
+  /** 是否承接 <write> 写回（word 型全文编辑器） */
+  write: boolean
+  /** 是否需要安装 CJK 兜底字体 */
+  cjkFont: boolean
+  /** 助手示例指令文案 */
+  hints: string
+  /** 中文意图 → 命令 id 关键词（子串匹配） */
+  intents: Array<[string, string]>
+}
+
+const kernelDescs = ref(new Map<string, KernelDesc>())
+/** 已注册内核 id（响应式：kernels.json 异步加载完成后更新，OfficeView gate 依赖它） */
+export const shellKernelIds = computed(() => [...kernelDescs.value.keys()])
+
+/** 取内核描述；未加载/未注册返回 undefined */
+export function kernelDesc(kernel: ShellKernel): KernelDesc | undefined {
+  return kernelDescs.value.get(kernel)
+}
+
+/** 模块加载即拉注册表（失败则无内核可用，重试由页面刷新兜底） */
+void fetch(`${apiUrl('plugins/file')}?id=ai-assistant&file=${encodeURIComponent('kernels.json')}`)
+  .then((r) => {
+    if (!r.ok) throw new Error(`kernels.json HTTP ${r.status}`)
+    return r.json()
+  })
+  .then((list: KernelDesc[]) => {
+    kernelDescs.value = new Map(list.map((d) => [d.id, d]))
+  })
+  .catch((e) => console.error('[shellAssistant] 内核注册表加载失败', e))
 
 interface CmdEntry {
   id: string
@@ -30,87 +67,6 @@ interface CmdEntry {
   shortcut: string
 }
 
-/** 中文意图 → 命令 id 关键词（子串匹配），按内核分族。 */
-const INTENTS: Record<ShellKernel, Array<[string, string]>> = {
-  wordcraft: [
-    ['表格|单元格|行高|列宽|合并|拆分', 'table'],
-    ['图片|照片|图像|截图', 'picture'],
-    ['页眉|页脚', 'hf header footer'],
-    ['页码', 'pageNumber'],
-    ['水印', 'watermark'],
-    ['批注|评论|注释', 'comment'],
-    ['修订|改痕|痕迹', 'trackChanges tracking'],
-    ['脚注|尾注', 'footnote endnote citation bibliography'],
-    ['目录', 'toc'],
-    ['引用|参考文献|书目', 'citation bibliography references'],
-    ['链接|超链接|网址', 'link'],
-    ['书签|交叉引用', 'bookmark'],
-    ['公式', 'equation'],
-    ['图表', 'chart'],
-    ['形状|图形', 'shape smartArt'],
-    ['艺术字', 'wordArt'],
-    ['文本框', 'textBox'],
-    ['封面', 'coverPage'],
-    ['字体|加粗|斜体|下划线|删除线|字号|颜色', 'font format.char format.text'],
-    ['段落|缩进|对齐|行距|间距', 'para'],
-    ['项目符号|编号|列表', 'bullets numbering list'],
-    ['样式|标题级别', 'style para.style outline.level'],
-    ['主题|设计|背景', 'design theme'],
-    ['查找|替换', 'find replace'],
-    ['撤销|重做', 'undo redo'],
-    ['打印|导出|另存为|PDF', 'file.print file.export file.save'],
-    ['页面|纸张|边距|横向|竖向|分栏|分页|分节', 'layout'],
-    ['选中|选区|选择', 'select'],
-    ['视图|缩放|窗口|阅读', 'view'],
-    ['审阅|校对|拼写', 'review proof'],
-    ['邮件|合并域', 'mailings merge'],
-    ['域|日期|时间|自动更新', 'fields'],
-    ['绘图|手绘|墨迹', 'draw'],
-  ],
-  gridcraft: [
-    ['单元格|写入|填写|填入|赋值', 'cell.set cell.get range.setValues'],
-    ['读取|读出|查看|看看|内容|数据|多少', 'sheet.read cell.get selection.stats docInspect'],
-    ['选中|选择|选区|定位', 'selection.set selection.move selection.currentRegion selection.row selection.column edit.goTo'],
-    ['公式|函数|求和|平均|统计|计算', 'formulas.'],
-    ['字体|加粗|斜体|下划线|字号|颜色|删除线', 'home.font home.bold home.italic home.underline home.strikethrough home.fillColor home.borders'],
-    ['对齐|换行|缩进|合并|拆分|边框|格式', 'home.align home.wrap home.indent home.merge home.unmerge home.borders home.formatCells home.numberFormat home.cellStyle home.conditionalFormat'],
-    ['行|列|行高|列宽|隐藏|插入行|插入列|删除行|删除列', 'rows columns rowHeight columnWidth autofit'],
-    ['工作表|sheet|标签|重命名|新建表|删除表', 'sheet.'],
-    ['表格|套用格式|超级表', 'table. insert.table formatAsTable'],
-    ['图表|图|可视化', 'chart insert.chart sparkline'],
-    ['图片|形状|文本框|图标|艺术字|符号', 'insert.picture insert.shape insert.icons insert.textBox shape wordArt insert.symbol'],
-    ['排序|筛选|去重|分列|验证|组合|分类汇总', 'data.sort data.filter data.removeDuplicates data.textToColumns data.validation data.group data.subtotal'],
-    ['复制|粘贴|剪切|填充|清除|查找|替换', 'edit.copy edit.cut edit.paste edit.clear edit.fill edit.find edit.replace range.fill'],
-    ['批注|注释|备注', 'review.newNote review.newComment review.deleteComment review.replyComment'],
-    ['保护|锁定|加密', 'review.protect home.lockCell review.unprotect'],
-    ['冻结|缩放|视图|网格线', 'view.freeze view.zoom view.gridlines view.show'],
-    ['打印|导出|保存|PDF', 'file.save file.export file.print pageLayout.'],
-    ['撤销|重做', 'edit.undo edit.redo'],
-    ['透视|汇总分析', 'pivot insert.pivotTable'],
-    ['链接|超链接', 'insert.link link.open'],
-  ],
-  deckcraft: [
-    ['幻灯片|新增|新建|加一页|加页|插入页|删除页|复制页|移动页|重排', 'slide.new slide.delete slide.duplicate slide.move slide.go slide.hide slide.layout slide.reset slide.fromOutline'],
-    ['读取|读出|查看|看看|内容|结构|大纲', 'slide.inspect document.inspect slide.fromOutline smartArt.toText shape.inspect'],
-    ['标题|副标题|正文|占位符|文字|文本', 'text.set text.get text.insert text.edit shape.rename insert.textBox placeholder'],
-    ['查找|替换', 'text.find text.replace'],
-    ['形状|图形|插入|图标|图片|线条|箭头|表格|smartart', 'shape.insert shape.presets insert. smartArt shape.delete'],
-    ['字体|加粗|斜体|下划线|字号|颜色|删除线', 'format.font format.bold format.italic format.underline format.color'],
-    ['对齐|行距|缩进|项目符号|编号|列表|段落', 'format.align format.para format.list'],
-    ['填充|边框|线条|样式|背景|阴影|圆角', 'shape.fill shape.line shape.quickStyle shape.effects format.shadow shape.adjust slide.background'],
-    ['移动|缩放|大小|旋转|翻转|层级|对齐分布|组合', 'shape.move shape.resize shape.setBounds shape.rotate shape.flip arrange.'],
-    ['动画|切换|过渡', 'animation. transition'],
-    ['备注|演讲者', 'slide.notes'],
-    ['选择|选中|选区', 'shape.select slide.selectSlides slide.selectRange text.select'],
-    ['撤销|重做', 'edit.undo edit.redo'],
-    ['放映|演示|播放', 'view.slideshow slideshow'],
-    ['主题|母版|版式|模板', 'theme. master slide.layout file.templates'],
-    ['批注|评论', 'comment.'],
-    ['导出|保存|打印|PDF|图片', 'file.save file.export file.print'],
-    ['图表', 'insert.chart chart.'],
-  ],
-}
-
 function pluginFile(file: string): Promise<string> {
   return fetch(`${apiUrl(`plugins/file`)}?id=ai-assistant&file=${encodeURIComponent(file)}`).then((r) => {
     if (!r.ok) throw new Error(`插件文件 ${file} 加载失败 HTTP ${r.status}`)
@@ -118,7 +74,15 @@ function pluginFile(file: string): Promise<string> {
   })
 }
 
-/** 共享技能库：顶层 skills/ 目录，与插件解耦，任意 AI 消费方经 GET /api/skills 引用 */
+/** 共享资源文件：assets/ 目录（命令目录等跨插件资源），经 GET /api/assets/file 两级查找 */
+function resourceFile(file: string): Promise<string> {
+  return fetch(`${apiUrl('assets/file')}?path=${encodeURIComponent(file)}`).then((r) => {
+    if (!r.ok) throw new Error(`资源文件 ${file} 加载失败 HTTP ${r.status}`)
+    return r.text()
+  })
+}
+
+/** 共享技能库：assets/skills/ 目录，与插件解耦，任意 AI 消费方经 GET /api/skills 引用 */
 function skillFile(file: string): Promise<string> {
   return fetch(`${apiUrl('skills')}?file=${encodeURIComponent(file)}`).then((r) => {
     if (!r.ok) throw new Error(`技能文件 ${file} 加载失败 HTTP ${r.status}`)
@@ -132,51 +96,54 @@ const promptCache = new Map<ShellKernel, Promise<string>>()
 function systemPrompt(kernel: ShellKernel): Promise<string> {
   let p = promptCache.get(kernel)
   if (!p) {
-    p = pluginFile(SHELL_KERNELS[kernel].prompt)
+    const file = kernelDesc(kernel)?.prompt
+    p = file ? pluginFile(file) : Promise.resolve('')
     promptCache.set(kernel, p)
   }
   return p
 }
 
 const skillCache = new Map<ShellKernel, Promise<string>>()
-/** 技能指南：word/excel/pptx 三个 skill 全量注入，当前内核的排最前 */
+/** 技能指南：只注入当前内核的 skill（全量注入实测 2/3 为无关内核技能，纯耗 token） */
 function skillGuide(kernel: ShellKernel): Promise<string> {
   let p = skillCache.get(kernel)
   if (!p) {
-    const ordered = [...SHELL_KERNELS[kernel].skill, ...Object.values(SHELL_KERNELS).flatMap((k) => k.skill)]
+    const files = kernelDesc(kernel)?.skills ?? []
     p = Promise.all(
-      ordered.map((f) => skillFile(f).then((t) => `<!-- skill: ${f} -->\n${t}`).catch(() => '')),
+      files.map((f) => skillFile(f).then((t) => `<!-- skill: ${f} -->\n${t}`).catch(() => '')),
     ).then((parts) => parts.filter(Boolean).join('\n\n'))
     skillCache.set(kernel, p)
   }
   return p
 }
 
-const catalogCache = new Map<ShellKernel, CmdEntry[] | null>()
+const catalogCache = new Map<ShellKernel, Promise<CmdEntry[]>>()
 async function catalog(kernel: ShellKernel): Promise<CmdEntry[]> {
   if (!catalogCache.has(kernel)) {
-    try {
-      const j = JSON.parse(await pluginFile(SHELL_KERNELS[kernel].catalog))
-      catalogCache.set(kernel, Array.isArray(j) ? j : [])
-    } catch {
-      catalogCache.set(kernel, [])
-    }
+    const file = kernelDesc(kernel)?.catalog
+    const p = file
+      ? resourceFile(`commands/${file}`)
+          .then((t) => JSON.parse(t))
+          .then((j) => (Array.isArray(j) ? j : []))
+          .catch(() => [] as CmdEntry[])
+      : Promise.resolve([] as CmdEntry[])
+    catalogCache.set(kernel, p)
   }
   return catalogCache.get(kernel)!
 }
 
-/** 按意图从目录挑相关命令拼成清单注入 system prompt；上限 140 条防膨胀。 */
-export async function commandRef(kernel: ShellKernel, text: string): Promise<string> {
-  const entries = await catalog(kernel)
-  if (!entries.length) return ''
+/** 按意图从目录挑相关命令拼成清单注入 system prompt；上限 40 条（实测足够覆盖单条消息需求，防 token 膨胀）。 */
+async function commandRef(kernel: ShellKernel, text: string): Promise<string> {
+  const [entries, intents] = await Promise.all([catalog(kernel), Promise.resolve(kernelDesc(kernel)?.intents ?? [])])
+  if (!entries.length || !intents.length) return ''
   const keys: string[] = []
-  for (const [re, ids] of INTENTS[kernel]) {
+  for (const [re, ids] of intents) {
     if (new RegExp(re).test(text)) keys.push(...ids.split(' '))
   }
   if (!keys.length) return ''
   const lines: string[] = []
   for (const c of entries) {
-    if (lines.length >= 140) break
+    if (lines.length >= 40) break
     const id = c.id.toLowerCase()
     if (keys.some((k) => id.includes(k.toLowerCase()))) {
       lines.push(`- ${c.id} ${c.params.replace(/\s+/g, ' ').slice(0, 110)} // ${c.label}`)
@@ -212,16 +179,6 @@ function valuesToText(values: unknown[][], range: string): string {
     }
   }
   return lines.join('\n')
-}
-
-function colName(n: number): string {
-  let s = ''
-  while (n > 0) {
-    const r = (n - 1) % 26
-    s = String.fromCharCode(65 + r) + s
-    n = Math.floor((n - 1) / 26)
-  }
-  return s
 }
 
 /** deckcraft 上下文：幻灯片概览（docInspect）+ 当前页形状文本（slide.inspect） */
@@ -290,10 +247,12 @@ async function gridContext(bridge: KernelBridge): Promise<string> {
   return head + data
 }
 
-export async function docContext(kernel: ShellKernel, bridge: KernelBridge): Promise<string> {
-  if (kernel === 'deckcraft') return deckContext(bridge)
-  if (kernel === 'wordcraft') return wordContext(bridge)
-  return gridContext(bridge)
+async function docContext(kernel: ShellKernel, bridge: KernelBridge): Promise<string> {
+  const kind = kernelDesc(kernel)?.context
+  if (kind === 'deck') return deckContext(bridge)
+  if (kind === 'word') return wordContext(bridge)
+  if (kind === 'grid') return gridContext(bridge)
+  return ''
 }
 
 /** wordcraft 写回上下文（对齐旧内核侧 main.js）：最近一次的全文块文本与分页起始块。 */
@@ -349,7 +308,7 @@ interface CmdOp {
   params?: Record<string, unknown>
 }
 
-export function parseCmds(reply: string): CmdOp[] {
+function parseCmds(reply: string): CmdOp[] {
   const out: CmdOp[] = []
   reply.replace(/<cmd>([\s\S]*?)<\/cmd>/g, (_m, body: string) => {
     try {
@@ -363,12 +322,7 @@ export function parseCmds(reply: string): CmdOp[] {
   return out
 }
 
-/** 剥掉 <cmd> 块后的展示文本 */
-export function displayText(reply: string): string {
-  return reply.replace(/<cmd>[\s\S]*?<\/cmd>/g, '').trim()
-}
-
-export async function runCmds(
+async function runCmds(
   cmds: CmdOp[],
   bridge: KernelBridge,
   signal?: AbortSignal,
@@ -437,8 +391,8 @@ export async function converse(opts: {
 
   const cmds = parseCmds(reply)
   opts.history.push({ role: 'user', content: user }, { role: 'assistant', content: reply })
-  // wordcraft 先写回文本再执行命令（对齐旧内核侧顺序，定位由命令自行完成）
-  if (opts.kernel === 'wordcraft') {
+  // word 型内核先写回文本再执行命令（对齐旧内核侧顺序，定位由命令自行完成）
+  if (kernelDesc(opts.kernel)?.write) {
     await runWrite(reply, opts.bridge, opts.onActivity)
   }
   await runCmds(cmds, opts.bridge, opts.signal, opts.onActivity)
@@ -486,7 +440,7 @@ async function runWrite(reply: string, bridge: KernelBridge, onActivity?: (label
 }
 
 /** 流式中的展示文本：剥完整 <cmd>/<write> 块与截断的半个标签，避免闪烁 */
-export function liveDisplay(reply: string): string {
+function liveDisplay(reply: string): string {
   return reply
     .replace(/<cmd>[\s\S]*?<\/cmd>/g, '')
     .replace(/<write[^>]*>[\s\S]*?<\/write>/g, '')
@@ -523,9 +477,9 @@ async function cjkFontBase64(): Promise<string> {
   return cjkFontB64
 }
 
-/** 内核就绪后安装中文字体（每次刷新 wasm 进程重建，需重装；失败静默不影响主流程） */
+/** 内核就绪后安装中文字体（每次刷新 wasm 进程重建，需重装；声明 cjkFont 的内核才装；失败静默不影响主流程） */
 export async function ensureCjkFont(kernel: ShellKernel, bridge: KernelBridge | null): Promise<void> {
-  if (kernel !== 'wordcraft' || !bridge) return
+  if (!bridge || !kernelDesc(kernel)?.cjkFont) return
   try {
     const data = await cjkFontBase64()
     await bridge('execute', 'font.add', { data, name: 'SourceHanSansCN-Regular.otf' })

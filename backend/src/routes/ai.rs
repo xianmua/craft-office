@@ -1,6 +1,6 @@
 //! AI 对话代理：API key 只存在服务端，前端永远接触不到。
 //! OpenAI 兼容协议（/chat/completions），stream 由请求体决定。
-//! 引擎注册表：内置 deepseek + plugins/*/engine.json 声明的插件引擎（如 dsh-ai），
+//! 引擎注册表：内置 deepseek + plugins/*/manifest.json（含 engine 节）声明的插件引擎，
 //! body 带 engine 字段（引擎 id）分流；新增引擎只需加插件目录，无需改后端代码。
 
 use std::collections::HashMap;
@@ -22,8 +22,39 @@ struct EngineConfig {
     model: String,
 }
 
-/// 引擎插件声明（plugins/<dir>/engine.json，camelCase）
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// 插件统一入口声明（plugins/<dir>/manifest.json）：身份 + 类型化配置节
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PluginManifest {
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    description: String,
+    /// AI 引擎插件必有此节；其他类型插件缺省
+    #[serde(default)]
+    engine: Option<EngineSection>,
+}
+
+/// manifest.engine 节：引擎行为配置（身份字段 id/label/desc 复用 manifest 顶层）
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EngineSection {
+    #[serde(default = "default_protocol")]
+    protocol: String,
+    #[serde(default)]
+    default_base_url: String,
+    #[serde(default)]
+    default_model: String,
+    #[serde(default)]
+    key_required: bool,
+    /// 配置持久化到 .env 的键前缀；缺省 = id 大写
+    #[serde(default)]
+    env_prefix: String,
+}
+
+/// 引擎注册表条目（内置 + 由 manifest.json 的 engine 节构造）
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineMeta {
     pub id: String,
@@ -73,30 +104,42 @@ fn builtin_engines() -> Vec<EngineMeta> {
     }]
 }
 
-/// 扫描 <dir>/*/engine.json（无 manifest.json，不会进插件市场列表）
+/// 扫描 <dir>/*/manifest.json：含 engine 节的注册为插件引擎（市场里启停联动，见 registry）
 fn plugin_engines(dev_dir: &str) -> Vec<EngineMeta> {
     let mut list = Vec::new();
     let Ok(entries) = std::fs::read_dir(Path::new(dev_dir)) else {
         return list;
     };
     for item in entries.flatten() {
-        let f = item.path().join("engine.json");
-        match std::fs::read_to_string(&f) {
-            Ok(raw) => match serde_json::from_str::<EngineMeta>(&raw) {
-                Ok(m) => list.push(m),
-                Err(e) => eprintln!("[ai] 引擎插件 {} 解析失败：{e}", f.display()),
-            },
-            Err(_) => {} // 非引擎插件目录，跳过
+        let f = item.path().join("manifest.json");
+        let Ok(raw) = std::fs::read_to_string(&f) else { continue };
+        match serde_json::from_str::<PluginManifest>(&raw) {
+            Ok(mf) => {
+                if let Some(eng) = mf.engine {
+                    list.push(EngineMeta {
+                        id: mf.id,
+                        label: mf.name,
+                        desc: mf.description,
+                        protocol: eng.protocol,
+                        default_base_url: eng.default_base_url,
+                        default_model: eng.default_model,
+                        key_required: eng.key_required,
+                        env_prefix: eng.env_prefix,
+                    });
+                }
+            }
+            Err(e) => eprintln!("[ai] 引擎插件 {} 解析失败：{e}", f.display()),
         }
     }
     list
 }
 
-/// 引擎注册表：内置在前，插件引擎同 id 不覆盖内置
+/// 引擎注册表：内置在前，插件引擎同 id 不覆盖内置；插件引擎受市场启停约束
 fn registry(cfg: &AppConfig) -> Vec<EngineMeta> {
     let mut list = builtin_engines();
+    let disabled = crate::routes::plugins::disabled_set(cfg);
     for m in plugin_engines(&cfg.plugins.dev_dir) {
-        if !list.iter().any(|e| e.id == m.id) {
+        if !list.iter().any(|e| e.id == m.id) && !disabled.contains(&m.id) {
             list.push(m);
         }
     }
@@ -131,7 +174,7 @@ fn engine_from_env(meta: &EngineMeta) -> Option<EngineConfig> {
     })
 }
 
-fn config(cfg: &AppConfig) -> Result<std::sync::RwLockReadGuard<'static, Option<HashMap<String, EngineConfig>>>, ApiError> {
+fn config(cfg: &AppConfig) -> Result<HashMap<String, EngineConfig>, ApiError> {
     if CFG.read().unwrap_or_else(|e| e.into_inner()).is_none() {
         let map: HashMap<String, EngineConfig> = registry(cfg)
             .iter()
@@ -139,7 +182,7 @@ fn config(cfg: &AppConfig) -> Result<std::sync::RwLockReadGuard<'static, Option<
             .collect();
         *CFG.write().unwrap_or_else(|e| e.into_inner()) = Some(map);
     }
-    Ok(CFG.read().unwrap_or_else(|e| e.into_inner()))
+    Ok(CFG.read().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default())
 }
 
 fn engine_cfg(
@@ -149,7 +192,7 @@ fn engine_cfg(
 ) -> Result<(EngineConfig, EngineMeta), ApiError> {
     let id = engine.unwrap_or("deepseek");
     let meta = find_meta(cfg, id).ok_or_else(|| {
-        ApiError::Internal(format!("未知引擎：{id}（内置 deepseek 或 plugins 目录 engine.json 声明）"))
+        ApiError::Internal(format!("未知引擎：{id}（内置 deepseek 或 plugins 目录 manifest.json engine 节声明）"))
     })?;
     let ec = map.get(id).cloned().ok_or_else(|| {
         ApiError::NotConfigured(format!(
@@ -173,7 +216,7 @@ pub struct ChatBody {
     pub stream: bool,
     #[serde(default)]
     pub temperature: Option<f32>,
-    /// 引擎分流：内置 deepseek（默认）/ 插件引擎 id（见 plugins/*/engine.json）
+    /// 引擎分流：内置 deepseek（默认）/ 插件引擎 id（见 plugins/*/manifest.json engine 节）
     #[serde(default)]
     pub engine: Option<String>,
 }
@@ -186,8 +229,7 @@ fn default_stream() -> bool {
 #[post("/api/ai/chat")]
 pub async fn ai_chat(body: web::Json<ChatBody>, data: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
     let cfg = config(&data)?;
-    let fallback = HashMap::new();
-    let (engine, meta) = engine_cfg(data.get_ref(), cfg.as_ref().unwrap_or(&fallback), body.engine.as_deref())?;
+    let (engine, meta) = engine_cfg(data.get_ref(), &cfg, body.engine.as_deref())?;
     let name = if meta.label.is_empty() { meta.id.clone() } else { meta.label };
 
     if body.messages.is_empty() {
@@ -326,11 +368,9 @@ fn persist_env(pairs: &[(&str, String)]) -> Result<(), ApiError> {
 #[get("/api/ai/config")]
 pub async fn ai_config_get(data: web::Data<Arc<AppConfig>>) -> Result<HttpResponse, ApiError> {
     let cfg = config(&data)?;
-    let fallback = HashMap::new();
-    let map = cfg.as_ref().unwrap_or(&fallback);
     let list: Vec<EngineInfo> = registry(data.get_ref())
         .iter()
-        .map(|m| engine_info(m, map.get(&m.id)))
+        .map(|m| engine_info(m, cfg.get(&m.id)))
         .collect();
     Ok(HttpResponse::Ok().json(list))
 }
@@ -357,9 +397,7 @@ pub async fn ai_config_put(
     let prefix = meta.prefix();
 
     let cfg = config(&data)?;
-    let fallback = HashMap::new();
-    let cur_cfg = cfg.as_ref().unwrap_or(&fallback).get(&body.engine).cloned();
-    drop(cfg);
+    let cur_cfg = cfg.get(&body.engine).cloned();
 
     let key = match body.api_key.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         Some(k) => k.to_string(),

@@ -1,7 +1,7 @@
-import { defineConfig, presetUno, presetAttributify, presetIcons } from 'unocss'
+import { defineConfig, presetUno } from 'unocss'
 
 export default defineConfig({
-  presets: [presetUno(), presetAttributify(), presetIcons()],
+  presets: [presetUno()],
   shortcuts: {
     'flex-center': 'flex items-center justify-center',
     'page-shell': 'h-screen w-screen flex flex-col overflow-hidden',

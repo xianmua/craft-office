@@ -1,5 +1,5 @@
 <template>
-  <!-- 设置面板：通用 SidePanel 容器 + 手风琴设置项；引擎列表来自后端注册表（内置 + plugins/*/engine.json） -->
+  <!-- 设置面板：通用 SidePanel 容器 + 手风琴设置项；引擎列表来自后端注册表（内置 + plugins/*/manifest.json engine 节） -->
   <SidePanel
     :visible="visible"
     title="设置"
@@ -81,11 +81,11 @@
 
       <p class="text-xs text-gray-400 m-0 leading-5">
         配置保存在后端 .env（API Key 不会回传明文），保存后即时生效，重启后仍有效。
-        新增引擎：在 plugins/ 下建目录放 engine.json 即可被自动发现。
+        新增引擎：在 assets/plugins/ 下建目录放 manifest.json（含 engine 节）即可被自动发现。
       </p>
 
       <h3 class="text-xs font-medium text-gray-400 m-0 uppercase tracking-wide">插件</h3>
-      <!-- 插件启停：项目级（随包分发，只读）+ 用户级（~/.craft-office/plugins，扩展） -->
+      <!-- 插件启停：项目级（随包分发，只读）+ 用户级（~/.craft-office/assets/plugins，扩展） -->
       <div v-if="plugins.length" class="flex flex-col gap-2">
         <div
           v-for="p in plugins"
@@ -103,7 +103,7 @@
           />
         </div>
       </div>
-      <p v-else class="text-xs text-gray-400 m-0">暂无插件。项目级放 plugins/&lt;id&gt;/（带 manifest.json），用户级放 ~/.craft-office/plugins/&lt;id&gt;/。</p>
+      <p v-else class="text-xs text-gray-400 m-0">暂无插件。项目级放 assets/plugins/&lt;id&gt;/（带 manifest.json），用户级放 ~/.craft-office/assets/plugins/&lt;id&gt;/。</p>
       <span v-if="pluginMsg" class="text-xs" :class="pluginMsgOk ? 'text-green-600' : 'text-red-500'">{{ pluginMsg }}</span>
     </div>
   </SidePanel>

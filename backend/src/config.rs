@@ -72,11 +72,11 @@ impl Default for PluginsConfig {
 }
 
 fn default_plugins_dev_dir() -> String {
-    "../plugins".to_string()
+    "../assets/plugins".to_string()
 }
 
 fn default_plugins_data_dir() -> String {
-    "~/.craft-office/plugins".to_string()
+    "~/.craft-office/assets/plugins".to_string()
 }
 
 /// 展开路径前导 ~（Windows 用 USERPROFILE，其余回落 HOME）。
