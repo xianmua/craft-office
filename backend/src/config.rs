@@ -72,7 +72,9 @@ impl Default for PluginsConfig {
 }
 
 fn default_plugins_dev_dir() -> String {
-    "../assets/plugins".to_string()
+    // 默认按部署态（exe 在发布根目录运行）：./assets/plugins；
+    // 开发态（cwd=backend/）由 backend/config.toml 显式覆盖为 ../assets/plugins
+    "./assets/plugins".to_string()
 }
 
 fn default_plugins_data_dir() -> String {

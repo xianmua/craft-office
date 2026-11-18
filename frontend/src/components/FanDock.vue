@@ -9,7 +9,7 @@
     <!-- 扇形菜单：竖条中心为圆心，4 个楔形扇区平分 180° 半圆辐射展开 -->
     <svg
       class="absolute pointer-events-none"
-      :style="{ left: '-112px', top: '-72px', width: '240px', height: '240px' }"
+      :style="{ left: '-112px', top: '-88px', width: '240px', height: '240px' }"
       viewBox="0 0 240 240"
     >
       <g
@@ -31,14 +31,21 @@
       </g>
     </svg>
 
+    <!-- 展开时的半圆轮毂：从竖条圆心放大浮现，半径 40 与扇区内弧齐平 -->
+    <div
+      class="hub absolute rounded-l-full bg-amber-400 border border-r-0 border-amber-500 pointer-events-none"
+      :class="{ open: menuOpen }"
+      :style="{ left: '-24px', top: '0px', width: '64px', height: '64px' }"
+    ></div>
+
     <!-- 竖条本体 -->
     <div
-      class="flex flex-col items-center justify-center gap-1 w-4 h-24 bg-amber-400 border border-r-0 border-amber-500 rounded-l-lg cursor-pointer select-none touch-none"
+      class="flex flex-col items-center justify-center gap-1 w-4 h-16 bg-amber-400 border border-r-0 border-amber-500 rounded-l-lg cursor-pointer select-none touch-none"
       @pointerdown="onBarDown"
       @click="onBarClick"
     >
       <span v-if="busy" class="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-      <svg class="w-3 h-3 text-white" viewBox="0 0 16 16" fill="none">
+      <svg class="w-3 h-3 text-white transition-transform duration-150" :class="{ 'rotate-180': menuOpen }" viewBox="0 0 16 16" fill="none">
         <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </div>
@@ -71,7 +78,7 @@ const FAN_CX = 120
 const FAN_CY = 120
 const FAN_R0 = 40
 const FAN_R1 = 112
-const RC_OUT = 10 // 外角圆角半径
+const RC_OUT = 5 // 外角圆角半径（过大会撑开扇区间隙的口部）
 const RC_IN = 6 // 内角圆角半径
 
 interface FanItem {
@@ -105,10 +112,10 @@ const FAN_ITEMS = computed<FanItem[]>(() => {
   )
   return items
 })
-/** 扇区半宽（度）：随扇区数缩放，留 2° 缝隙 */
+/** 扇区半宽（度）：随扇区数缩放，留 3.5° 缝隙（角度恒定→视觉上根部窄口部宽，属楔形天性） */
 function fanHalf(): number {
   const n = engineCount.value + 2
-  return 180 / n / 2 - 1
+  return 180 / n / 2 - 1.75
 }
 
 /** 圆角楔形扇环 path：径向直边 + 内外弧，四个角用二次贝塞尔倒圆 */
@@ -209,6 +216,19 @@ function onBarClick() {
   transform: scale(1);
   pointer-events: auto;
   cursor: pointer;
+}
+/* 半圆轮毂：从竖条圆心缩放浮现，与扇区同节奏展开 */
+.hub {
+  opacity: 0;
+  transform: scale(0.2);
+  transform-origin: 50% 50%;
+  transition:
+    transform 0.18s ease-out,
+    opacity 0.15s ease-out;
+}
+.hub.open {
+  opacity: 1;
+  transform: scale(1);
 }
 .fan-wedge {
   transition: filter 0.12s;
