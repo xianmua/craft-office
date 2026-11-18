@@ -12,6 +12,7 @@
       <span class="text-sm font-medium">{{ title }}</span>
       <span v-if="busy" class="text-xs text-gray-400">任务运行中…</span>
       <div class="flex-1"></div>
+      <slot name="actions" />
       <button
         class="w-6 h-6 flex items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-600 cursor-pointer"
         title="最小化"

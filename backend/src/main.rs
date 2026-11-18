@@ -62,11 +62,7 @@ async fn main() -> std::io::Result<()> {
                     .prefer_utf8(true)
                     .use_etag(true),
             )
-            // ArtCraft 完整编辑器（eframe wasm 产物，trunk build 输出）
-            // 注意：wordcraft_page 必须先注册，/wordcraft?url= 才不会被静态服务截胡
-            .service(routes::page::wordcraft_page)
-            .service(routes::page::gridcraft_page)
-            .service(routes::page::deckcraft_page)
+            // 内核静态资源（wordcraft/gridcraft/deckcraft trunk 产物；统一入口是 /office?url=）
             .service(
                 fs::Files::new("/gridcraft", std::path::Path::new(&static_dir).join("gridcraft"))
                     .index_file("index.html")
@@ -105,7 +101,6 @@ async fn main() -> std::io::Result<()> {
             .service(routes::plugins::plugin_file)
             .service(routes::plugins::skill_file)
             .service(routes::page::health)
-            .service(routes::page::artcraft_file)
             .service(routes::page::office_root)
             .default_service(web::to(routes::page::spa_fallback))
     })

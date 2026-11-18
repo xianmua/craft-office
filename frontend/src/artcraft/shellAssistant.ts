@@ -429,6 +429,10 @@ export async function converse(opts: {
       opts.onReason?.(reason)
       opts.onActivity?.('思考中')
     },
+    // DSH agent 流的工具调用过程（delta.tool_calls / 顶层 dsh 结果）→ 活动小字
+    (label) => {
+      opts.onActivity?.(label)
+    },
   )
 
   const cmds = parseCmds(reply)

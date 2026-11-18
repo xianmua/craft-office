@@ -13,7 +13,8 @@ import { apiUrl } from './base'
 /** AI 引擎 id：内置 deepseek + 插件引擎（plugins 目录下 engine.json 声明，如 dsh） */
 export type AiEngine = string
 
-/** 流式对话：onDelta 逐段回调增量正文，onReason 回调推理思考增量（混合推理模型才有）；
+/** 流式对话：onDelta 逐段回调增量正文，onReason 回调推理思考增量（混合推理模型才有），
+ * onTool 回调工具调用过程（delta.tool_calls 函数名 / 顶层 dsh 工具结果，DSH agent 流才有）；
  * resolve 为完整回复；signal 用于取消（关闭即取消） */
 export async function chatStream(
   messages: ChatMessage[],
@@ -21,6 +22,7 @@ export async function chatStream(
   signal?: AbortSignal,
   engine: AiEngine = 'deepseek',
   onReason?: (delta: string) => void,
+  onTool?: (label: string) => void,
 ): Promise<string> {
   const res = await fetch(apiUrl('ai/chat'), {
     method: 'POST',
@@ -61,6 +63,14 @@ export async function chatStream(
         const delta = chunk?.choices?.[0]?.delta
         const reason: string | undefined = delta?.reasoning_content
         if (reason && onReason) onReason(reason)
+        // 工具调用增量：取函数名回调（参数分片不拼，只报名字）
+        const tcName: string | undefined = delta?.tool_calls?.[0]?.function?.name
+        if (tcName && onTool) onTool(`调用 ${tcName}`)
+        // DSH 工具结果：顶层 dsh 字段（形状由服务端定，能取到标识就展示）
+        if (chunk?.dsh && onTool) {
+          const tag = chunk.dsh?.name ?? chunk.dsh?.type ?? ''
+          onTool(`工具返回${tag ? `：${tag}` : ''}`)
+        }
         const content: string | undefined = delta?.content
         if (content) {
           full += content

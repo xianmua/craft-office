@@ -6,12 +6,3 @@ declare module '*.vue' {
   export default component
 }
 
-interface ArtCraftSdk {
-  WordCraft?: { create: (opts: unknown) => unknown }
-  GridCraft?: { create: (opts: unknown) => unknown }
-  DeckCraft?: { create: (opts: unknown) => unknown }
-}
-
-interface Window {
-  ArtCraft?: ArtCraftSdk
-}

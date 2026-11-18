@@ -63,7 +63,6 @@
           @save="onKernelSave"
           @dirty="onKernelDirty"
           @failed="onKernelFailed"
-          @plugins="openMarket"
         />
         <FallbackPreview v-else-if="preview" :model="preview" />
 
@@ -82,7 +81,7 @@
             @update:visible="assistantOpen = $event"
             @busy="assistantBusy = $event"
           />
-          <SettingsPanel v-model:visible="settingsOpen" />
+          <SettingsPanel v-model:visible="settingsOpen" @changed="refreshEnabledPlugins" />
         </template>
 
         <t-dialog
@@ -99,7 +98,6 @@
         </t-dialog>
       </template>
 
-      <PluginMarket ref="marketRef" v-model:visible="marketOpen" @changed="onPluginsChanged" />
     </main>
   </div>
 </template>
@@ -110,7 +108,6 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { ErrorCircleFilledIcon } from "tdesign-icons-vue-next";
 import KernelFrame from "@/components/KernelFrame.vue";
 import FallbackPreview from "@/components/FallbackPreview.vue";
-import PluginMarket from "@/components/PluginMarket.vue";
 import FanDock from "@/components/FanDock.vue";
 import AssistantPanel from "@/components/AssistantPanel.vue";
 import SettingsPanel from "@/components/SettingsPanel.vue";
@@ -134,9 +131,6 @@ const binary = ref<ArrayBuffer | null>(null);
 const dirty = ref(false);
 const editorKernel = ref("");
 const kernelRef = ref<InstanceType<typeof KernelFrame>>();
-
-const marketOpen = ref(false);
-const marketRef = ref<InstanceType<typeof PluginMarket>>();
 
 /** 第三方嵌入中继：被嵌且 ?parentOrigin= 白名单声明时，内核事件向上转发（协议见 hostRelay.ts） */
 const relay = createHostRelay((name, bytes) => kernelRef.value?.openDoc(name, bytes));
@@ -208,18 +202,6 @@ function onSocketClick(item: DockItem) {
 }
 
 const fileName = computed(() => (remoteUrl.value ? fileNameOf(remoteUrl.value) : ""));
-
-function openMarket() {
-  console.log("[ov] openMarket");
-  marketOpen.value = true;
-  void marketRef.value?.refresh();
-}
-
-/** 市场里安装/卸载/启停后：让内核重载插件，并刷新外壳助手开关 */
-function onPluginsChanged() {
-  kernelRef.value?.notifyPluginsChanged();
-  void refreshEnabledPlugins();
-}
 
 async function load() {
   if (!remoteUrl.value) {

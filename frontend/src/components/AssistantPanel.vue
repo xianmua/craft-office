@@ -8,7 +8,48 @@
     @minimize="emit('update:visible', false)"
     @close="close"
   >
-    <div ref="listRef" class="flex flex-col gap-3 p-4">
+    <!-- 头部动作区：会话列表 / 返回对话 切换 -->
+    <template #actions>
+      <button
+        class="w-6 h-6 flex items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-600 cursor-pointer"
+        :title="view === 'chat' ? '会话列表' : '返回对话'"
+        @click="view = view === 'chat' ? 'sessions' : 'chat'"
+      >
+        <svg v-if="view === 'chat'" class="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <path d="M3 4h10M3 8h10M3 12h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+        <svg v-else class="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <path d="M13 3v10M9.5 4.5L6 8l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </template>
+
+    <!-- 会话列表视图 -->
+    <div v-if="view === 'sessions'" class="flex flex-col p-3">
+      <button
+        class="mb-2 self-start border-0 bg-transparent p-0 text-xs text-blue-600 hover:text-blue-700 cursor-pointer"
+        :disabled="busy"
+        title="开始新会话"
+        @click="newSession"
+      >＋ 新会话</button>
+      <p v-if="sessions.length === 0" class="text-sm text-muted m-0">暂无历史会话</p>
+      <div
+        v-for="s in sessions"
+        :key="s.id"
+        class="session-item px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+        :class="{ 'opacity-50 pointer-events-none': busy }"
+        @click="loadSession(s.id)"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm text-gray-700 truncate">{{ sessionTitle(s) }}</span>
+          <span class="text-xs text-gray-400 shrink-0">{{ sessionDate(s.createdAt) }}</span>
+        </div>
+        <div class="text-xs text-gray-400 mt-0.5 truncate">{{ s.id }}</div>
+      </div>
+    </div>
+
+    <!-- 对话视图 -->
+    <div v-show="view === 'chat'" ref="listRef" class="flex flex-col gap-3 p-4">
       <p v-if="messages.length === 0" class="text-sm text-muted m-0 leading-6">
         {{ hints }}
       </p>
@@ -38,7 +79,7 @@
     </div>
 
     <template #footer>
-      <div class="mx-3 mb-3 rounded-xl border border-gray-300 bg-gray-50 focus-within:border-gray-500 p-2 transition-colors">
+      <div v-if="view === 'chat'" class="mx-3 mb-3 rounded-xl border border-gray-300 bg-gray-50 focus-within:border-gray-500 p-2 transition-colors">
         <textarea
           ref="inputRef"
           v-model="input"
@@ -119,6 +160,77 @@ const input = ref('')
 const busy = ref(false)
 const error = ref('')
 
+// ---- 会话持久化：localStorage 存历史会话，列表可回载 ----
+interface StoredSession {
+  id: string
+  createdAt: number
+  messages: Msg[]
+  history: ChatMessage[]
+}
+const SESSIONS_KEY = 'artcraft-ai-sessions'
+const SESSIONS_MAX = 30
+const view = ref<'chat' | 'sessions'>('chat')
+const sid = ref('') // 当前会话 id（空 = 尚未落库，首次发消息时创建）
+const sessions = ref<StoredSession[]>([])
+
+function loadSessions(): StoredSession[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]') as StoredSession[]
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+function refreshSessions() {
+  sessions.value = loadSessions().sort((a, b) => b.createdAt - a.createdAt)
+}
+/** 把当前对话写入存储（对话一轮结束或切会话前调用） */
+function persistSession() {
+  if (!sid.value || messages.value.length === 0) return
+  const list = loadSessions().filter((s) => s.id !== sid.value)
+  list.push({
+    id: sid.value,
+    createdAt: sessions.value.find((s) => s.id === sid.value)?.createdAt ?? Date.now(),
+    messages: JSON.parse(JSON.stringify(messages.value)),
+    history: JSON.parse(JSON.stringify(history.value)),
+  })
+  list.sort((a, b) => b.createdAt - a.createdAt)
+  try {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(list.slice(0, SESSIONS_MAX)))
+  } catch { /* 存储满则放弃本轮落库 */ }
+  refreshSessions()
+}
+function sessionTitle(s: StoredSession): string {
+  const first = s.messages.find((m) => m.role === 'user')?.text ?? ''
+  return first.slice(0, 20) || '（空会话）'
+}
+function sessionDate(t: number): string {
+  return new Date(t).toLocaleString('zh-CN', { hour12: false })
+}
+/** 回载历史会话：替换当前对话内容并回到聊天视图 */
+function loadSession(id: string) {
+  if (busy.value) return
+  persistSession()
+  const s = loadSessions().find((x) => x.id === id)
+  if (!s) return
+  sid.value = s.id
+  messages.value = JSON.parse(JSON.stringify(s.messages))
+  history.value = JSON.parse(JSON.stringify(s.history))
+  error.value = ''
+  view.value = 'chat'
+  void scrollBottom()
+}
+/** 开新会话：当前对话先落库，清空现场 */
+function newSession() {
+  if (busy.value) return
+  persistSession()
+  sid.value = ''
+  messages.value = []
+  history.value = []
+  error.value = ''
+  view.value = 'chat'
+}
+
 /** busy 同步给竖条呼吸点 */
 watch(busy, (v) => emit('busy', v))
 
@@ -140,6 +252,7 @@ function onDocClick(e: MouseEvent) {
 onMounted(() => {
   document.addEventListener('click', onDocClick)
   void ensureEngines() // 引擎下拉列表（后端注册表）
+  refreshSessions() // 历史会话列表
 })
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
@@ -174,6 +287,7 @@ function onSend() {
   input.value = ''
   busy.value = true
   error.value = ''
+  if (!sid.value) sid.value = `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   messages.value.push({ role: 'user', text })
   const live = messages.value.push({ role: 'assistant', text: '', activity: '' }) - 1
   void scrollBottom()
@@ -205,6 +319,7 @@ function onSend() {
       if (messages.value[live]) messages.value[live].activity = ''
       busy.value = false
       ctrl = null
+      persistSession()
       void scrollBottom()
     })
     .catch((e) => {
@@ -216,6 +331,7 @@ function onSend() {
       }
       busy.value = false
       ctrl = null
+      persistSession()
       void scrollBottom()
     })
 }

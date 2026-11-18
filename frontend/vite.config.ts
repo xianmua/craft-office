@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 const BACKEND = process.env.ARTCRAFT_BACKEND ?? 'http://127.0.0.1:7778'
 
 // 需转发到后端的路径前缀：api/外壳 + 三内核静态目录（dev 下避免被 SPA 回退劫持）
-const PREFIXES = ['/api', '/artcraft', '/fonts', '/wordcraft', '/gridcraft', '/deckcraft']
+const PREFIXES = ['/api', '/fonts', '/wordcraft', '/gridcraft', '/deckcraft']
 
 // 子路径部署前缀（如 ARTCRAFT_BASE=/office/），默认根路径；前端代码通过 import.meta.env.BASE_URL 感知
 const RAW_BASE = (process.env.ARTCRAFT_BASE ?? '/').trim()

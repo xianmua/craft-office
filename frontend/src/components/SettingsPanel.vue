@@ -58,7 +58,7 @@
             />
           </label>
           <label class="flex flex-col gap-1">
-            <span class="text-xs text-gray-500">模型（留空用默认 {{ e.defaultModel }}）</span>
+            <span class="text-xs text-gray-500">模型（{{ e.defaultModel ? `留空用默认 ${e.defaultModel}` : '留空用服务端默认' }}）</span>
             <input
               v-model="form[e.id].model"
               type="text"
@@ -83,6 +83,28 @@
         配置保存在后端 .env（API Key 不会回传明文），保存后即时生效，重启后仍有效。
         新增引擎：在 plugins/ 下建目录放 engine.json 即可被自动发现。
       </p>
+
+      <h3 class="text-xs font-medium text-gray-400 m-0 uppercase tracking-wide">插件</h3>
+      <!-- 插件启停：项目级（随包分发，只读）+ 用户级（~/.craft-office/plugins，扩展） -->
+      <div v-if="plugins.length" class="flex flex-col gap-2">
+        <div
+          v-for="p in plugins"
+          :key="p.id"
+          class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5 bg-white"
+        >
+          <span class="flex flex-col items-start gap-0.5 min-w-0">
+            <span class="text-sm text-gray-700">{{ p.name }} <span class="text-xs text-gray-400">v{{ p.version }} · {{ p.source === 'user' ? '用户级' : '项目级' }}</span></span>
+            <span class="text-xs text-gray-400 leading-4 truncate w-full">{{ p.description }}</span>
+          </span>
+          <t-switch
+            :value="p.enabled"
+            :disabled="busyId === p.id"
+            @change="(v: boolean) => togglePlugin(p.id, v)"
+          />
+        </div>
+      </div>
+      <p v-else class="text-xs text-gray-400 m-0">暂无插件。项目级放 plugins/&lt;id&gt;/（带 manifest.json），用户级放 ~/.craft-office/plugins/&lt;id&gt;/。</p>
+      <span v-if="pluginMsg" class="text-xs" :class="pluginMsgOk ? 'text-green-600' : 'text-red-500'">{{ pluginMsg }}</span>
     </div>
   </SidePanel>
 </template>
@@ -92,12 +114,16 @@ import { reactive, ref, watch } from 'vue'
 import SidePanel from '@/components/SidePanel.vue'
 import type { EngineConfigView } from '@/api/ai'
 import { updateAiConfig } from '@/api/ai'
+import { fetchPlugins, enablePlugin } from '@/api/plugins'
 import { aiEngine, aiEngines, ensureEngines, setAiEngine } from '@/artcraft/aiEngine'
 
 const props = defineProps<{ visible: boolean }>()
-const emit = defineEmits<{ (e: 'update:visible', v: boolean): void }>()
+const emit = defineEmits<{
+  (e: 'update:visible', v: boolean): void
+  (e: 'changed'): void
+}>()
 
-// 每次打开面板强制刷新引擎列表（新装引擎插件立即可见）并回填表单
+// 每次打开面板强制刷新引擎列表（新装引擎插件立即可见）并回填表单，同时刷新插件启停状态
 watch(
   () => props.visible,
   (v) => {
@@ -105,9 +131,54 @@ watch(
       void ensureEngines(true).then((list) => {
         for (const e of list) hydrate(e.id)
       })
+      void refreshPlugins()
     }
   },
 )
+
+/** 插件列表（合并 installed 启用状态）与启停操作 */
+interface PluginRow {
+  id: string
+  name: string
+  version: string
+  description: string
+  source: string
+  enabled: boolean
+}
+const plugins = ref<PluginRow[]>([])
+const busyId = ref('')
+const pluginMsg = ref('')
+const pluginMsgOk = ref(false)
+
+async function refreshPlugins() {
+  try {
+    const catalog = await fetchPlugins()
+    plugins.value = catalog.market.map((m) => ({
+      ...m,
+      enabled: catalog.installed.find((s) => s.id === m.id)?.enabled ?? true,
+    }))
+  } catch {
+    plugins.value = []
+  }
+}
+
+async function togglePlugin(id: string, enabled: boolean) {
+  busyId.value = id
+  pluginMsg.value = ''
+  try {
+    await enablePlugin(id, enabled)
+    const row = plugins.value.find((p) => p.id === id)
+    if (row) row.enabled = enabled
+    pluginMsg.value = `已${enabled ? '启用' : '停用'}：${row?.name ?? id}`
+    pluginMsgOk.value = true
+    emit('changed')
+  } catch (err) {
+    pluginMsg.value = err instanceof Error ? err.message : String(err)
+    pluginMsgOk.value = false
+  } finally {
+    busyId.value = ''
+  }
+}
 
 interface FormItem {
   apiKey: string

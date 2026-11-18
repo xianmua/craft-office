@@ -18,7 +18,7 @@
 | 内核缺失时降级只读预览（浏览器本地解 OOXML，展示正文 / 表格 / 幻灯片文本） | ✅ 本版新增 |
 | 多人协同、云端保存、账号体系 | ❌ v0.2+ |
 
-> 内核本身不在本仓库内（也无 npm 包），接入方式见 [vendor/artcraft/README.md](vendor/artcraft/README.md)。
+> 内核（wordcraft / gridcraft / deckcraft）以 trunk 产物形式放 backend/static/ 下，构建见 [docs/BUILD.md](docs/BUILD.md)。
 > 未接入内核时页面不会白屏，而是走降级预览：结构解析在浏览器本地完成，文件内容不经过任何第三方服务。
 
 ## 快速开始
@@ -38,7 +38,7 @@ cargo run
 
 打开：<http://127.0.0.1:7778/office?url=https://calibre-ebook.com/downloads/demos/demo.docx>
 
-开发模式（前端热更新，`/api`、`/artcraft` 代理到 7778）：
+开发模式（前端热更新，`/api`、内核静态目录代理到 7778）：
 
 ```powershell
 cd backend;  cargo run
@@ -59,7 +59,7 @@ craft-office/
 │   │   ├── guard.rs          # SSRF：白名单 + DNS/IP 校验（含单元测试）
 │   │   ├── error.rs          # 统一 JSON 错误体
 │   │   └── routes/
-│   │       ├── page.rs       # /office、/api/health、/artcraft/*、SPA 兜底
+│   │       ├── page.rs       # /、/api/health、SPA 兜底
 │   │       └── doc.rs        # /api/doc/meta、/api/doc/proxy（流式 + 限流）
 │   └── static/               # 前端构建产物（构建时生成）
 ├── frontend/                 # Vue 3 + TDesign + UnoCSS
@@ -70,7 +70,7 @@ craft-office/
 │       ├── api/doc.ts
 │       └── artcraft/loader.ts   # ← 唯一强耦合官方内核 API 的文件
 │       └── artcraft/ooxml.ts    # 降级预览的 OOXML 解析
-├── vendor/artcraft/          # 内核产物放置说明（不提交二进制）
+├── vendor/wordcraft-cli/     # 无头文档代理 CLI（DeepSeek MCP 桥用）
 ├── docs/                     # 设计文档与构建说明
 └── scripts/                  # 启动 / 构建脚本
 ```

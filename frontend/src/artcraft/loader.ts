@@ -40,7 +40,6 @@ export type KernelEvent =
   | { type: 'failed'; message: string }
   | { type: 'save'; payload: KernelSavePayload }
   | { type: 'dirty'; value: boolean }
-  | { type: 'plugins' }
 
 /** 解析内核发来的消息；非该内核的消息返回 null */
 export function parseKernelMessage(kernel: string, data: unknown): KernelEvent | null {
@@ -50,8 +49,6 @@ export function parseKernelMessage(kernel: string, data: unknown): KernelEvent |
   switch (type) {
     case `${kernel}:ready`:
       return { type: 'ready' }
-    case `${kernel}:plugins`:
-      return { type: 'plugins' }
     case `${kernel}:failed`:
       return { type: 'failed', message: typeof msg.error === 'string' ? msg.error : '内核启动失败' }
     case `${kernel}:dirty`:

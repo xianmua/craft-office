@@ -64,10 +64,10 @@ fn builtin_engines() -> Vec<EngineMeta> {
     vec![EngineMeta {
         id: "deepseek".to_string(),
         label: "LLM AI".to_string(),
-        desc: "DeepSeek 直连（服务端网关）".to_string(),
+        desc: "DeepSeek 网关（OpenAI 兼容）".to_string(),
         protocol: "openai".to_string(),
-        default_base_url: "https://api.deepseek.com".to_string(),
-        default_model: "deepseek-chat".to_string(),
+        default_base_url: "http://ai-gateway.linkskycloud.com/v1".to_string(),
+        default_model: "deepseek-v4.1-flash".to_string(),
         key_required: true,
         env_prefix: "DEEPSEEK".to_string(),
     }]
@@ -202,12 +202,15 @@ pub async fn ai_chat(body: web::Json<ChatBody>, data: web::Data<Arc<AppConfig>>)
         )));
     }
 
-    let payload = serde_json::json!({
-        "model": engine.model,
+    // model 为空 = 不传该字段，由引擎服务端用自己的默认模型（不同部署的模型名前缀各异，留空最通用）
+    let mut payload = serde_json::json!({
         "messages": body.messages,
         "stream": body.stream,
         "temperature": body.temperature,
     });
+    if !engine.model.is_empty() {
+        payload["model"] = serde_json::Value::String(engine.model.clone());
+    }
 
     let client = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))

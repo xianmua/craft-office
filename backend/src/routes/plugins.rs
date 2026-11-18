@@ -23,11 +23,9 @@ pub struct MarketEntry {
     pub version: String,
     #[serde(default)]
     pub description: String,
-    /// 插件入口 JS（相对插件目录）
+    /// 插件入口 JS（相对插件目录）；纯资源插件（仅被 /api/plugins/file 拉取附属文件）可缺省
+    #[serde(default)]
     pub file: String,
-    /// 插件声明要隐藏的功能区 tab（内核英文原名，如 ["Help"]）；宿主同步进内核 hidden_tabs
-    #[serde(rename = "hideTabs", default)]
-    pub hide_tabs: Vec<String>,
     /// 插件适用的应用（内核名，如 ["wordcraft","gridcraft"]）；缺省/空 = 全应用可用
     #[serde(default)]
     pub apps: Vec<String>,
@@ -290,7 +288,8 @@ pub async fn plugin_file(q: web::Query<PluginOp>, cfg: web::Data<Arc<AppConfig>>
     Ok(HttpResponse::Ok().content_type(mime).body(code))
 }
 
-/// 共享技能库（项目根 skills/，与插件解耦，任意 AI 消费方经 GET /api/skills?file=<name>/<file> 引用）。
+/// 共享技能库：项目级 skills/（打包内置）+ 用户级 ~/.craft-office/skills（扩展），
+/// 同名文件项目级优先；任意 AI 消费方经 GET /api/skills?file=<name>/<file> 引用。
 /// 校验与 plugin_file 同款：扩展名白名单 + 禁反斜杠/.. + 深度限制，防路径穿越。
 #[derive(Debug, Deserialize)]
 pub struct SkillOp {
@@ -315,8 +314,18 @@ pub async fn skill_file(q: web::Query<SkillOp>, cfg: web::Data<Arc<AppConfig>>) 
     {
         return Err(ApiError::Internal("非法技能文件名".to_string()));
     }
-    let root = Path::new(&cfg.plugins.dev_dir).parent().unwrap_or(Path::new(".")).join("skills");
-    let code = std::fs::read_to_string(root.join(name))
+    // 查找顺序：项目级 skills/（与 dev_dir 同级的顶层目录）→ 用户级 ~/.craft-office/skills（data_dir 同级）
+    let project_root = Path::new(&cfg.plugins.dev_dir).parent().unwrap_or(Path::new(".")).join("skills");
+    let user_root = Path::new(&cfg.plugins.data_dir)
+        .parent()
+        .unwrap_or_else(|| Path::new(&cfg.plugins.data_dir))
+        .join("skills");
+    let file = [project_root, user_root]
+        .iter()
+        .map(|root| root.join(name))
+        .find(|p| p.is_file());
+    let file = file.ok_or_else(|| ApiError::Internal(format!("技能不存在：{name}")))?;
+    let code = std::fs::read_to_string(file)
         .map_err(|e| ApiError::Internal(format!("读取技能 {name} 失败：{e}")))?;
     Ok(HttpResponse::Ok().content_type("text/plain; charset=utf-8").body(code))
 }

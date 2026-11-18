@@ -15,7 +15,7 @@
 cd backend
 cargo run
 
-# 终端 2：前端 dev server（7777，/api 与 /artcraft 代理到 7778）
+# 终端 2：前端 dev server（7777，/api 与内核静态目录代理到 7778）
 cd frontend
 npm install
 npm run dev

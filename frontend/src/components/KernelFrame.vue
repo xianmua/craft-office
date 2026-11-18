@@ -20,7 +20,6 @@ const emit = defineEmits<{
   (e: 'failed', message: string): void
   (e: 'save', payload: KernelSavePayload): void
   (e: 'dirty', value: boolean): void
-  (e: 'plugins'): void
 }>()
 
 const frame = ref<HTMLIFrameElement>()
@@ -33,8 +32,7 @@ function onMessage(event: MessageEvent) {
   console.log('[kf] message', event.origin, typeof event.data, JSON.stringify(event.data))
   if (event.origin !== location.origin) return
   // 不做 event.source 与 iframe.contentWindow 的严格比对：内核加载期间 iframe 可能被
-  // Vue 重建，旧内核窗口的迟发消息（如 wordcraft:plugins）会被误丢，导致市场打不开；
-  // 同源 + 消息类型前缀（parseKernelMessage 按 `${kernel}:` 匹配）已足够过滤。
+  // Vue 重建，旧内核窗口的迟发消息会被误丢；同源 + 消息类型前缀已足够过滤。
   const parsed = parseKernelMessage(props.kernel, event.data)
   console.log('[kf] parsed kernel=', JSON.stringify(props.kernel), '->', JSON.stringify(parsed))
   if (!parsed) return
@@ -43,9 +41,6 @@ function onMessage(event: MessageEvent) {
       kernelReady = true
       emit('ready')
       flush()
-      break
-    case 'plugins':
-      emit('plugins')
       break
     case 'failed':
       emit('failed', parsed.message)
@@ -75,11 +70,6 @@ function openDoc(name: string, bytes: ArrayBuffer) {
   frame.value.contentWindow.postMessage(openMessage(props.kernel, name, bytes), location.origin)
 }
 
-/** 插件启停/安装/卸载后通知内核重载插件（web/plugins.rs 监听） */
-function notifyPluginsChanged() {
-  frame.value?.contentWindow?.postMessage(`${props.kernel}:pluginsChanged`, location.origin)
-}
-
 /**
  * 官方页面命令 API 薄代理：调用内核窗口上的 window.<app>.<method>（同源 iframe 可直接访问）。
  * method ∈ request/execute/commands/docInspect/uiInspect/screenshot，均返回 promise（内核自带超时）。
@@ -101,5 +91,5 @@ function call(method: string, ...args: unknown[]): Promise<unknown> {
 onMounted(() => window.addEventListener('message', onMessage))
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 
-defineExpose({ openDoc, notifyPluginsChanged, call, kernelApi })
+defineExpose({ openDoc, call, kernelApi })
 </script>
