@@ -3,6 +3,8 @@ export interface DocMeta {
   mime: string
   size: number | null
   supported: boolean
+  /** 旧格式（doc/xls/ppt/csv）经后端 LibreOffice 自动转换而来 */
+  converted: boolean
 }
 
 import { apiUrl, readError } from './base'

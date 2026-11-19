@@ -8,6 +8,19 @@
   解包取 `package/SourceHanSansCN-{Regular,Bold}.otf` 放入 `backend/static/fonts/`。
   缺失时 wordcraft 中文正文显示为方块（外壳 `font.add` 自动安装，见 `shellAssistant.ts` 的 `ensureCjkFont`）。
 
+## 旧格式自动转换（可选，doc/xls/ppt/csv → OOXML）
+
+后端启动时自动探测 LibreOffice（soffice）：检测到即支持旧格式文档加载（自动转换为 docx/xlsx/pptx 再进内核），未检测到则维持「格式不受支持」的拒绝提示。探测顺序：
+
+1. 环境变量 `CRAFT_SOFFICE` 指向的 soffice 可执行文件
+2. 便携版 `vendor/libreoffice/`（免安装不入库，见下）
+3. PATH 中的 soffice
+4. 常见安装路径（Windows: `C:\Program Files\LibreOffice\program`）
+
+推荐用 LibreOffice 便携版（MPL 2.0，可随包分发）：解压到 `vendor/libreoffice/` 即可，布局兼容 `program/soffice.exe` 或其下任意一级子目录的 `program/`（官方 portable 与 portableapps 版均可）。已加入 .gitignore，发布时整目录随包拷贝到目标机器。
+
+转换产物缓存在文档缓存目录（key 用转换后扩展名），同一链接二次打开秒回；转换仅用于加载展示，不回写原文档。
+
 ## Windows 一键开发（两个终端）
 
 ```powershell

@@ -12,6 +12,8 @@ vendor/artcraft/*.wasm
 vendor/artcraft/*.js
 # 内核 CLI（部署产物不入库，重建见 docs/BUILD.md）
 vendor/wordcraft-cli/
+# LibreOffice 便携版（旧格式自动转换，解压即用，见 docs/BUILD.md）
+vendor/libreoffice/
 mcp-workspace/
 
 # 内核源码与构建产物（体积大，由 patches/ + BUILD.md 重建步骤还原，本地保留不入库）

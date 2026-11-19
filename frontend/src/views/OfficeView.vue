@@ -3,7 +3,7 @@
     <main class="relative flex-1 min-h-0">
       <div v-if="loading" class="absolute inset-0 z-10 flex-center flex-col gap-3 bg-white/85">
         <t-loading size="small" />
-        <span class="text-sm text-muted">正在通过后端代理拉取文档…</span>
+        <span class="text-sm text-muted">{{ loadingHint }}</span>
       </div>
 
       <!-- 未带 url 参数：入口 -->
@@ -133,6 +133,16 @@ const dirty = ref(false);
 const editorKernel = ref("");
 const kernelRef = ref<InstanceType<typeof KernelFrame>>();
 
+/** 代理正文实际扩展名：旧格式自动转换后为转换产物扩展名（meta.ext），用于打开文件名 */
+const docExt = ref("");
+const loadingHint = ref("正在通过后端代理拉取文档…");
+
+/** 打开内核用的文件名：扩展名跟随代理正文（转换后 a.doc → a.docx），内核按扩展名分型 */
+const openName = computed(() => {
+  const raw = fileName.value || "document";
+  return docExt.value ? `${raw.replace(/\.[^.]*$/, "")}.${docExt.value}` : raw;
+});
+
 /** 第三方嵌入中继：被嵌且 ?parentOrigin= 白名单声明时，内核事件向上转发（协议见 hostRelay.ts） */
 const relay = createHostRelay((name, bytes) => kernelRef.value?.openDoc(name, bytes));
 
@@ -217,10 +227,15 @@ async function load() {
   binary.value = null;
   dirty.value = false;
   editorKernel.value = "";
+  docExt.value = "";
 
   try {
     const meta = await fetchMeta(remoteUrl.value);
     if (!meta.supported) throw new Error(`后端判定该格式不受支持：.${meta.ext}`);
+    docExt.value = meta.ext;
+    loadingHint.value = meta.converted
+      ? "旧格式文档转换中（doc/xls/ppt → OOXML）…"
+      : "正在通过后端代理拉取文档…";
 
     const bytes = await fetchBinary(remoteUrl.value);
     binary.value = bytes;
@@ -253,7 +268,7 @@ function onKernelReady() {
   // wasm 进程无系统中文字体，就绪即装 CJK 兜底字体（每次刷新需重装）
   void ensureCjkFont(editorKernel.value, assistantBridge.value);
   if (!binary.value) return;
-  kernelRef.value?.openDoc(fileName.value || "document.docx", binary.value);
+  kernelRef.value?.openDoc(openName.value || "document.docx", binary.value);
 }
 
 async function onKernelSave(payload: KernelSavePayload) {

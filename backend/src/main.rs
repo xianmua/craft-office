@@ -1,4 +1,5 @@
 mod config;
+mod convert;
 mod doc_cache;
 mod error;
 mod extract;

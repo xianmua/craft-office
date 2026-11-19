@@ -22,10 +22,18 @@ pub struct DocQuery {
 
 #[derive(Debug, Serialize)]
 pub struct DocMeta {
+    /// 代理正文实际扩展名：旧格式自动转换后为转换产物扩展名（docx/xlsx/pptx）
     pub ext: String,
     pub mime: String,
     pub size: Option<u64>,
     pub supported: bool,
+    /// 是否由旧格式（doc/xls/ppt/csv）经 LibreOffice 自动转换而来
+    pub converted: bool,
+}
+
+/// OOXML：内核直接支持
+fn is_ooxml(ext: &str) -> bool {
+    matches!(ext, "docx" | "xlsx" | "pptx")
 }
 
 pub(crate) struct Prepared {
@@ -88,18 +96,22 @@ pub async fn doc_meta(
     if q.url.starts_with("/samples/") {
         let (path, ext) = local_sample_path(&cfg, &q.url)?;
         let size = std::fs::metadata(&path).ok().map(|m| m.len());
+        let (ext, converted) = effective_ext(ext);
         return Ok(HttpResponse::Ok().json(DocMeta {
             mime: mime_of(&ext).to_string(),
-            supported: matches!(ext.as_str(), "docx" | "xlsx" | "pptx"),
+            supported: is_ooxml(&ext) || converted,
             ext,
             size,
+            converted,
         }));
     }
 
-    let ext = detect_ext(&url_path_of(&q.url));
-    let supported = matches!(ext.as_str(), "docx" | "xlsx" | "pptx");
+    let raw_ext = detect_ext(&url_path_of(&q.url));
+    let (ext, converted) = effective_ext(raw_ext);
+    let supported = is_ooxml(&ext) || converted;
 
     let cache = DocCache::new(&cfg.doc.cache_dir);
+    // 旧格式命中转换产物缓存（key 用转换后扩展名）
     if let Some(p) = cache.get(&doc_cache::key_of(&q.url, &ext)) {
         let size = std::fs::metadata(&p).ok().map(|m| m.len());
         return Ok(HttpResponse::Ok().json(DocMeta {
@@ -107,6 +119,7 @@ pub async fn doc_meta(
             ext,
             size,
             supported,
+            converted,
         }));
     }
 
@@ -132,7 +145,16 @@ pub async fn doc_meta(
         ext,
         size,
         supported,
+        converted,
     }))
+}
+
+/// 扩展名的「生效形态」：旧格式在装了 soffice 后按转换产物扩展名上报（converted=true）
+fn effective_ext(ext: String) -> (String, bool) {
+    match crate::convert::target_ext(&ext) {
+        Some(t) if crate::convert::soffice_path().is_some() => (t.to_string(), true),
+        _ => (ext, false),
+    }
 }
 
 /// 流式代理正文：同源返回，前端不需要关心 CORS / 签名 / Referer。
@@ -148,6 +170,16 @@ pub async fn doc_proxy(
         let (path, ext) = local_sample_path(&cfg, &q.url)?;
         let name = sanitize_filename(&percent_decode(q.url.trim_start_matches("/samples/")));
         let kind = if q.download { "attachment" } else { "inline" };
+        // 旧格式样例：装了 soffice 现转现回（不落缓存）
+        if effective_ext(ext.clone()).1 {
+            let bytes =
+                std::fs::read(&path).map_err(|e| ApiError::Internal(format!("读取文件失败：{e}")))?;
+            let (new_ext, out) = crate::convert::convert(&ext, bytes)
+                .await
+                .map_err(ApiError::Internal)?;
+            let name = with_ext(&name, &new_ext);
+            return bytes_body_response(out, mime_of(&new_ext), &content_disposition(kind, &name));
+        }
         return file_body_response(&path, mime_of(&ext), &content_disposition(kind, &name));
     }
 
@@ -160,6 +192,34 @@ pub async fn doc_proxy(
     let disposition = content_disposition(kind, &filename);
 
     let cache = DocCache::new(&cfg.doc.cache_dir);
+
+    // 旧格式自动转换：拉全量 → soffice 转换 → 转换产物写缓存（key 用转换后扩展名）→ 返回
+    if let (Some(target), true) =
+        (crate::convert::target_ext(&ext), crate::convert::soffice_path().is_some())
+    {
+        let key = doc_cache::key_of(&q.url, target);
+        if let Some(p) = cache.get(&key) {
+            let name = with_ext(&filename, target);
+            return file_body_response(&p, mime_of(target), &content_disposition(kind, &name));
+        }
+        let raw = download_full(&prep, cfg.doc.max_bytes).await?;
+        let (new_ext, out) = crate::convert::convert(&ext, raw)
+            .await
+            .map_err(ApiError::Internal)?;
+        if let Ok((part, mut file)) = cache.part_file(&key) {
+            use std::io::Write;
+            if file.write_all(&out).is_ok() {
+                drop(file);
+                cache.commit(&part, &key);
+            } else {
+                drop(file);
+                cache.abort(&part);
+            }
+        }
+        let name = with_ext(&filename, &new_ext);
+        return bytes_body_response(out, mime_of(&new_ext), &content_disposition(kind, &name));
+    }
+
     let key = doc_cache::key_of(&q.url, &ext);
     if let Some(p) = cache.get(&key) {
         return file_body_response(&p, mime, &disposition);
@@ -226,12 +286,54 @@ fn file_body_response(
     disposition: &str,
 ) -> Result<HttpResponse, ApiError> {
     let body = std::fs::read(path).map_err(|e| ApiError::Internal(format!("读取文件失败：{e}")))?;
+    bytes_body_response(body, mime, disposition)
+}
+
+/// 内存字节响应（转换产物等）。
+fn bytes_body_response(body: Vec<u8>, mime: &str, disposition: &str) -> Result<HttpResponse, ApiError> {
     Ok(HttpResponse::Ok()
         .insert_header(("Content-Type", mime))
         .insert_header(("Content-Disposition", disposition))
         .insert_header(("Cache-Control", "private, max-age=300"))
         .insert_header(("X-Content-Type-Options", "nosniff"))
         .body(body))
+}
+
+/// 全量下载（旧格式转换前用）：内存缓冲，限流保护。
+async fn download_full(prep: &Prepared, max: u64) -> Result<Vec<u8>, ApiError> {
+    let resp = prep
+        .client
+        .get(prep.target.clone())
+        .header(ACCEPT_ENCODING, "identity")
+        .send()
+        .await
+        .map_err(|e| ApiError::Upstream(format!("拉取文件失败：{e}")))?;
+
+    if !resp.status().is_success() {
+        return Err(ApiError::Upstream(format!(
+            "上游拒绝访问（HTTP {}）：可能是签名直链已过期或缺少授权",
+            resp.status().as_u16()
+        )));
+    }
+    if let Some(len) = resp.content_length() {
+        if len > max {
+            return Err(ApiError::TooLarge);
+        }
+    }
+    use futures_util::TryStreamExt;
+    let chunks = limited_stream(resp.bytes_stream(), max)
+        .try_collect::<Vec<web::Bytes>>()
+        .await
+        .map_err(|e| ApiError::Upstream(format!("拉取文件失败：{e}")))?;
+    Ok(chunks.concat())
+}
+
+/// 文件名换扩展名（转换产物）：a.doc → a.docx；无扩展名则追加。
+fn with_ext(name: &str, ext: &str) -> String {
+    match name.rsplit_once('.') {
+        Some((stem, _)) if !stem.is_empty() => format!("{stem}.{ext}"),
+        _ => format!("{name}.{ext}"),
+    }
 }
 
 /// 流式转发的同时写入缓存临时文件；完整结束提交，出错中断即丢弃。
@@ -468,6 +570,14 @@ mod tests {
             "attachment; filename=\"__.docx\"; filename*=UTF-8''%E6%8A%98%E5%8F%A0.docx"
         );
         assert!(v.is_ascii());
+    }
+
+    #[test]
+    fn swaps_extension() {
+        assert_eq!(with_ext("a.doc", "docx"), "a.docx");
+        assert_eq!(with_ext("a.b.doc", "docx"), "a.b.docx");
+        assert_eq!(with_ext("noext", "xlsx"), "noext.xlsx");
+        assert_eq!(with_ext(".doc", "docx"), ".doc.docx");
     }
 
     #[test]
