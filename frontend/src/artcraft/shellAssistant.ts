@@ -461,11 +461,13 @@ export function replySummary(reply: string): string {
 }
 
 let cjkFontB64: string | null = null
+let cjkFontBoldB64: string | null = null
 
 /** CJK 兜底字体 base64（wasm 进程无系统中文字体，缺字会显示方块；来源见 docs/BUILD.md） */
-async function cjkFontBase64(): Promise<string> {
-  if (cjkFontB64) return cjkFontB64
-  const res = await fetch(kernelUrl('fonts/SourceHanSansCN-Regular.otf'))
+async function cjkFontBase64(weight: 'Regular' | 'Bold'): Promise<string> {
+  const cache = weight === 'Bold' ? cjkFontBoldB64 : cjkFontB64
+  if (cache) return cache
+  const res = await fetch(kernelUrl(`fonts/SourceHanSansCN-${weight}.otf`))
   if (!res.ok) throw new Error(`font fetch ${res.status}`)
   const buf = new Uint8Array(await res.arrayBuffer())
   let s = ''
@@ -473,15 +475,19 @@ async function cjkFontBase64(): Promise<string> {
   for (let i = 0; i < buf.length; i += CHUNK) {
     s += String.fromCharCode(...buf.subarray(i, i + CHUNK))
   }
-  cjkFontB64 = btoa(s)
-  return cjkFontB64
+  const b64 = btoa(s)
+  if (weight === 'Bold') cjkFontBoldB64 = b64
+  else cjkFontB64 = b64
+  return b64
 }
 
 /** 内核就绪后安装中文字体（每次刷新 wasm 进程重建，需重装；声明 cjkFont 的内核才装；失败静默不影响主流程） */
 export async function ensureCjkFont(kernel: ShellKernel, bridge: KernelBridge | null): Promise<void> {
   if (!bridge || !kernelDesc(kernel)?.cjkFont) return
-  try {
-    const data = await cjkFontBase64()
-    await bridge('execute', 'font.add', { data, name: 'SourceHanSansCN-Regular.otf' })
-  } catch { /* 兜底失败仅表现为缺字方块 */ }
+  for (const weight of ['Regular', 'Bold'] as const) {
+    try {
+      const data = await cjkFontBase64(weight)
+      await bridge('execute', 'font.add', { data, name: `SourceHanSansCN-${weight}.otf` })
+    } catch { /* 兜底失败仅表现为缺字方块 */ }
+  }
 }

@@ -203,8 +203,14 @@ function onDockAction(key: string) {
 }
 
 /** 页面命令 API 桥：转交 KernelFrame（同源 iframe contentWindow.window.<app>） */
+const kernelBridge = computed<KernelBridge | null>(() =>
+  kernelRef.value ? (method, ...args) => kernelRef.value!.call(method, ...args) : null,
+);
+/** AI 助手桥：仅在助手 gate 通过时可用（字体安装等基础功能走 kernelBridge，不依赖助手开关） */
 const assistantBridge = computed<KernelBridge | null>(() =>
-  shellAssistant.value ? (method, ...args) => kernelRef.value!.call(method, ...args) : null,
+  shellAssistant.value
+    ? (method, ...args) => kernelRef.value!.call(method, ...args)
+    : null,
 );
 
 function onSocketClick(item: DockItem) {
@@ -266,7 +272,7 @@ async function load() {
 function onKernelReady() {
   relay.toParent({ type: "artcraft:ready" });
   // wasm 进程无系统中文字体，就绪即装 CJK 兜底字体（每次刷新需重装）
-  void ensureCjkFont(editorKernel.value, assistantBridge.value);
+  void ensureCjkFont(editorKernel.value, kernelBridge.value);
   if (!binary.value) return;
   kernelRef.value?.openDoc(openName.value || "document.docx", binary.value);
 }
