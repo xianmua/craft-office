@@ -149,10 +149,10 @@ pub async fn doc_meta(
     }))
 }
 
-/// 扩展名的「生效形态」：旧格式在装了 soffice 后按转换产物扩展名上报（converted=true）
+/// 扩展名的「生效形态」：旧格式在装了任一转换引擎（convert-svc / soffice）后按转换产物扩展名上报（converted=true）
 fn effective_ext(ext: String) -> (String, bool) {
     match crate::convert::target_ext(&ext) {
-        Some(t) if crate::convert::soffice_path().is_some() => (t.to_string(), true),
+        Some(t) if crate::convert::convert_available() => (t.to_string(), true),
         _ => (ext, false),
     }
 }
@@ -193,9 +193,9 @@ pub async fn doc_proxy(
 
     let cache = DocCache::new(&cfg.doc.cache_dir);
 
-    // 旧格式自动转换：拉全量 → soffice 转换 → 转换产物写缓存（key 用转换后扩展名）→ 返回
+    // 旧格式自动转换：拉全量 → 转换（convert-svc 优先，soffice 兜底）→ 产物写缓存 → 返回
     if let (Some(target), true) =
-        (crate::convert::target_ext(&ext), crate::convert::soffice_path().is_some())
+        (crate::convert::target_ext(&ext), crate::convert::convert_available())
     {
         let key = doc_cache::key_of(&q.url, target);
         if let Some(p) = cache.get(&key) {

@@ -10,16 +10,23 @@
 
 ## 旧格式自动转换（可选，doc/xls/ppt/csv → OOXML）
 
-后端启动时自动探测 LibreOffice（soffice）：检测到即支持旧格式文档加载（自动转换为 docx/xlsx/pptx 再进内核），未检测到则维持「格式不受支持」的拒绝提示。探测顺序：
+后端采用双引擎，启动时自动探测，检测到任一引擎即支持旧格式文档加载（自动转换为 docx/xlsx/pptx 再进内核），都没有则维持「格式不受支持」的拒绝提示。
 
-1. 环境变量 `CRAFT_SOFFICE` 指向的 soffice 可执行文件
-2. 便携版 `vendor/libreoffice/`（免安装不入库，见下）
-3. PATH 中的 soffice
-4. 常见安装路径（Windows: `C:\Program Files\LibreOffice\program`）
+**引擎 1（优先）：Node sidecar `vendor/convert-svc/`**——@deepseek-ai/libreoffice-kit（DeepSeek 官方，MPL 2.0）包装的本地 HTTP 服务，免装 LibreOffice，稳态转换约 1-3s。组装步骤（不入库）：
 
-推荐用 LibreOffice 便携版（MPL 2.0，可随包分发）：解压到 `vendor/libreoffice/` 即可，布局兼容 `program/soffice.exe` 或其下任意一级子目录的 `program/`（官方 portable 与 portableapps 版均可）。已加入 .gitignore，发布时整目录随包拷贝到目标机器。
+1. `mkdir vendor/convert-svc`，把 Node >= 22.19 的 `node.exe` 拷入（本机可用 `mise` 安装的 node）。
+2. 任意目录 `npm install @deepseek-ai/libreoffice-kit`（自动带平台引擎包），把生成的 `node_modules` 整目录拷入 `vendor/convert-svc/`。
+3. 可精简：删除 `node_modules/@deepseek-ai/libreoffice-kit-wasm/`（Windows 上原生引擎 win32-x64 优先，wasm 仅是 fallback，可省约 145MB）。
+4. `svc.js` 已入库（sidecar 服务本体），无需额外获取。
 
-转换产物缓存在文档缓存目录（key 用转换后扩展名），同一链接二次打开秒回；转换仅用于加载展示，不回写原文档。
+**引擎 2（兜底）：LibreOffice `vendor/libreoffice/`**——可选。推荐便携版（MPL 2.0），解压到该目录即可，稳态转换约 7.5s。当前仓库未放置该目录（sidecar 已覆盖主力格式）；补充放置后 csv→xlsx 也能转换（sidecar 的 kit 不支持 csv 输入，doc/xls/ppt 则两引擎均可）。
+
+探测顺序与回退：
+
+1. 优先走 sidecar（`vendor/convert-svc/svc.js` + node 可执行，node 先找目录内自带再找 PATH）；sidecar 启动失败会在本进程内标记不可用并回退。
+2. sidecar 未配置或单次转换失败时回退 soffice：环境变量 `CRAFT_SOFFICE` → 便携版 `vendor/libreoffice/` → PATH → 常见安装路径（Windows: `C:\Program Files\LibreOffice\program`）。
+
+sidecar 进程由后端懒启动、随主进程退出（stdin 管道断开自动自杀，无孤儿残留）。发布时两个目录存在即整目录随包拷贝（publish.ps1 自动处理）。转换产物缓存在文档缓存目录（key 用转换后扩展名），同一链接二次打开秒回；转换仅用于加载展示，不回写原文档。
 
 ## Windows 一键开发（两个终端）
 

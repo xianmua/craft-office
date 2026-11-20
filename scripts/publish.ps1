@@ -32,6 +32,22 @@ Copy-Item $exe "$stage\artcraft-office\"
 robocopy "$root\backend\static" "$stage\artcraft-office\static" /E /XF .trunk-lock /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -gt 7) { throw "robocopy static failed $LASTEXITCODE" }
 Copy-Item "$root\assets" "$stage\artcraft-office\assets" -Recurse
+# legacy converter: bundle the Node sidecar (fast path) and vendor/libreoffice
+# (fallback) when present; the exe auto-detects both at runtime
+if (Test-Path "$root\vendor\convert-svc") {
+  robocopy "$root\vendor\convert-svc" "$stage\artcraft-office\vendor\convert-svc" /E /NFL /NDL /NJH /NJS | Out-Null
+  if ($LASTEXITCODE -gt 7) { throw "robocopy convert-svc failed $LASTEXITCODE" }
+  Write-Output "BUNDLED: vendor/convert-svc (sidecar conversion engine)"
+} else {
+  Write-Output "SKIPPED: vendor/convert-svc absent, falling back to LibreOffice only"
+}
+if (Test-Path "$root\vendor\libreoffice") {
+  robocopy "$root\vendor\libreoffice" "$stage\artcraft-office\vendor\libreoffice" /E /NFL /NDL /NJH /NJS | Out-Null
+  if ($LASTEXITCODE -gt 7) { throw "robocopy libreoffice failed $LASTEXITCODE" }
+  Write-Output "BUNDLED: vendor/libreoffice (legacy doc/xls/ppt conversion enabled)"
+} else {
+  Write-Output "SKIPPED: vendor/libreoffice absent, legacy formats stay unsupported in the bundle"
+}
 if (Test-Path "$root\backend\samples") { Copy-Item "$root\backend\samples" "$stage\artcraft-office\samples" -Recurse }
 Copy-Item "$root\backend\.env.example" "$stage\artcraft-office\.env.example"
 # config template: the bundle runs the exe at the root, so dev_dir ../assets/plugins -> ./assets/plugins
