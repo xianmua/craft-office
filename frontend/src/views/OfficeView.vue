@@ -269,10 +269,11 @@ async function load() {
   }
 }
 
-function onKernelReady() {
+async function onKernelReady() {
   relay.toParent({ type: "artcraft:ready" });
-  // wasm 进程无系统中文字体，就绪即装 CJK 兜底字体（每次刷新需重装）
-  void ensureCjkFont(editorKernel.value, kernelBridge.value);
+  // wasm 进程无系统中文字体，先装完 CJK 兜底字体再开文档：
+  // deckcraft 已布局文本不会随新装字体重排，边开边装会长时间显示方块（装完才由缩放往返纠正）
+  await ensureCjkFont(editorKernel.value, kernelBridge.value);
   if (!binary.value) return;
   kernelRef.value?.openDoc(openName.value || "document.docx", binary.value);
 }

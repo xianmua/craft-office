@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const STATIC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", process.argv[2] ?? "backend/static");
-const KERNELS = ["wordcraft", "gridcraft", "deckcraft"];
+const KERNELS = ["wordcraft", "gridcraft", "deckcraft", "pdfcraft"];
 const MARKER = "artcraft-direct";
 
 // 旧版注入清理：自嵌 iframe 引导（已废弃）与无标记的旧中文默认脚本。

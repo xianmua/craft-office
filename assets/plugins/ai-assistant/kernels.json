@@ -7,6 +7,7 @@
     "context": "word",
     "write": true,
     "cjkFont": true,
+    "cjkFontKeep": true,
     "hints": "试试：「在文档末尾加一句…」「把第一段加粗」「把所有『旧词』替换成『新词』」。",
     "intents": [
       ["表格|单元格|行高|列宽|合并|拆分", "table"],
@@ -83,7 +84,7 @@
     "catalog": "commands-deckcraft.json",
     "context": "deck",
     "write": false,
-    "cjkFont": false,
+    "cjkFont": true,
     "hints": "试试：「把第 1 页标题改成…」「新增一页标题加两个要点」「给标题加粗」。",
     "intents": [
       ["幻灯片|新增|新建|加一页|加页|插入页|删除页|复制页|移动页|重排", "slide.new slide.delete slide.duplicate slide.move slide.go slide.hide slide.layout slide.reset slide.fromOutline"],
@@ -104,6 +105,37 @@
       ["批注|评论", "comment."],
       ["导出|保存|打印|PDF|图片", "file.save file.export file.print"],
       ["图表", "insert.chart chart."]
+    ]
+  },
+  {
+    "id": "pdfcraft",
+    "prompt": "agent-pdf.md",
+    "skills": ["pdf/SKILL.md"],
+    "catalog": "commands-pdfcraft.json",
+    "context": "pdf",
+    "write": false,
+    "cjkFont": false,
+    "hints": "试试：「这份 PDF 有几页」「把第 1 页旋转 90 度」「提取前 3 页为新文档」。",
+    "intents": [
+      ["几页|页数|多少页|信息|概览|元数据", "docInspect"],
+      ["提取|导出页面|拆分|抽出", "page.extract organize."],
+      ["删除|移除页面|去掉", "page.delete organize."],
+      ["旋转|转向|横|竖", "page.rotate organize."],
+      ["合并|拼接|组合|combine", "organize. combine"],
+      ["移动|重排|排序|调换|上移|下移", "organize. page.move"],
+      ["注释|批注|评论|便签|高亮|下划线|删除线", "comment."],
+      ["表单|填写|字段|勾选", "form."],
+      ["签名|盖章|证书|认证", "sign."],
+      ["脱敏|涂黑|遮盖|redact", "redact"],
+      ["加密|密码|权限|保护", "security encrypt password protect"],
+      ["书签|大纲|目录", "bookmark outline toc"],
+      ["附件|图层", "attachment layer"],
+      ["截图|快照|图片", "ui.screenshot snapshot"],
+      ["查找|搜索|定位", "find"],
+      ["缩放|视图|页面显示|布局", "view zoom layout"],
+      ["撤销|重做", "edit.undo edit.redo"],
+      ["保存|导出|另存|PDF", "file.save file.export"],
+      ["文本|文字|内容|修改字", "edit.text"]
     ]
   }
 ]

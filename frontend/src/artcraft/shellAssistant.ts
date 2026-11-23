@@ -27,12 +27,14 @@ export interface KernelDesc {
   skills: string[]
   /** 插件内命令目录 json */
   catalog: string
-  /** 文档上下文格式化器（内置三种：grid=表格数据 / deck=幻灯片形状 / word=全文块+分页） */
-  context: 'grid' | 'deck' | 'word'
+  /** 文档上下文格式化器（内置四种：grid=表格数据 / deck=幻灯片形状 / word=全文块+分页 / pdf=文档与视图概览） */
+  context: 'grid' | 'deck' | 'word' | 'pdf'
   /** 是否承接 <write> 写回（word 型全文编辑器） */
   write: boolean
   /** 是否需要安装 CJK 兜底字体 */
   cjkFont: boolean
+  /** 内核自身把已装字体持久化在 IndexedDB（跨刷新自动恢复），装过一次后跳过重装 */
+  cjkFontKeep?: boolean
   /** 助手示例指令文案 */
   hints: string
   /** 中文意图 → 命令 id 关键词（子串匹配） */
@@ -146,7 +148,8 @@ async function commandRef(kernel: ShellKernel, text: string): Promise<string> {
     if (lines.length >= 40) break
     const id = c.id.toLowerCase()
     if (keys.some((k) => id.includes(k.toLowerCase()))) {
-      lines.push(`- ${c.id} ${c.params.replace(/\s+/g, ' ').slice(0, 110)} // ${c.label}`)
+      // pdfcraft 目录条目无 params 字段（纯 UI 命令），兜底为空串
+      lines.push(`- ${c.id} ${(c.params ?? '').replace(/\s+/g, ' ').slice(0, 110)} // ${c.label}`)
     }
   }
   if (!lines.length) return ''
@@ -252,7 +255,35 @@ async function docContext(kernel: ShellKernel, bridge: KernelBridge): Promise<st
   if (kind === 'deck') return deckContext(bridge)
   if (kind === 'word') return wordContext(bridge)
   if (kind === 'grid') return gridContext(bridge)
+  if (kind === 'pdf') return pdfContext(bridge)
   return ''
+}
+
+/** pdfcraft 上下文：ui.state（docInspect）压成文档列表 + 当前视图摘要（不含文本内容）。 */
+async function pdfContext(bridge: KernelBridge): Promise<string> {
+  let st: {
+    documents?: Array<{ name?: string; pages?: number; dirty?: boolean; active?: boolean }>
+    active?: { page?: number; selected_pages?: number[]; organize?: boolean; find_open?: boolean } | null
+  } = {}
+  try {
+    st = (await bridge('docInspect')) as typeof st
+  } catch {
+    return ''
+  }
+  const docs = st.documents ?? []
+  if (!docs.length) return ''
+  const list = docs
+    .map((d) => `${d.name ?? '未命名'}（${d.pages ?? '?'}页${d.dirty ? '，有未保存修改' : ''}${d.active ? '，当前' : ''}）`)
+    .join('；')
+  const a = st.active
+  let view = ''
+  if (a) {
+    const parts = [`当前页：第${a.page ?? '?'}页`]
+    if (a.selected_pages?.length) parts.push(`选中的页：${a.selected_pages.join(',')}`)
+    if (a.organize) parts.push('组织模式（页面网格）')
+    view = `；【当前视图】${parts.join('，')}`
+  }
+  return `【PDF 概览】${list}${view}`
 }
 
 /** wordcraft 写回上下文（对齐旧内核侧 main.js）：最近一次的全文块文本与分页起始块。 */
@@ -460,14 +491,29 @@ export function replySummary(reply: string): string {
   return n ? `已执行 ${n} 条操作。` : ''
 }
 
-let cjkFontB64: string | null = null
-let cjkFontBoldB64: string | null = null
+/** 内核启动即装的 CJK 字体（wasm 进程无系统中文字体，缺字显示方块；文件见 backend/static/fonts，来源见 docs/BUILD.md）。
+ * 内核按文档声明的字体名与字体内部 family 名精确匹配（无别名/尾部匹配），故用 scripts/make-cjk-fonts.py
+ * 把思源 SC 的内部名改成「宋体」「黑体」「等线」「微软雅黑」「Inter」再装：宋体精确覆盖衬线正文，黑体精确覆盖标题/表头，
+ * 等线（Word 2016+ 中文默认字体）覆盖文档内嵌 EMF 图片里的文字，微软雅黑覆盖常见声明字体，Inter 覆盖 deckcraft 主题默认字体（排最前优先装），其余声明名按缺字回退。 */
+const CJK_FONT_FILES = [
+  'InterCJK-Regular.otf',
+  'InterCJK-Bold.otf',
+  'SongTi-Regular.otf',
+  'SongTi-Bold.otf',
+  'HeiTi-Regular.otf',
+  'HeiTi-Bold.otf',
+  'DengXian-Regular.otf',
+  'DengXian-Bold.otf',
+  'WeiRuanYaHei-Regular.otf',
+  'WeiRuanYaHei-Bold.otf',
+]
 
-/** CJK 兜底字体 base64（wasm 进程无系统中文字体，缺字会显示方块；来源见 docs/BUILD.md） */
-async function cjkFontBase64(weight: 'Regular' | 'Bold'): Promise<string> {
-  const cache = weight === 'Bold' ? cjkFontBoldB64 : cjkFontB64
-  if (cache) return cache
-  const res = await fetch(kernelUrl(`fonts/SourceHanSansCN-${weight}.otf`))
+/** CJK 字体 base64（按文件名缓存） */
+const cjkFontCache = new Map<string, string>()
+async function cjkFontBase64(file: string): Promise<string> {
+  const hit = cjkFontCache.get(file)
+  if (hit) return hit
+  const res = await fetch(kernelUrl(`fonts/${file}`))
   if (!res.ok) throw new Error(`font fetch ${res.status}`)
   const buf = new Uint8Array(await res.arrayBuffer())
   let s = ''
@@ -476,18 +522,45 @@ async function cjkFontBase64(weight: 'Regular' | 'Bold'): Promise<string> {
     s += String.fromCharCode(...buf.subarray(i, i + CHUNK))
   }
   const b64 = btoa(s)
-  if (weight === 'Bold') cjkFontBoldB64 = b64
-  else cjkFontB64 = b64
+  cjkFontCache.set(file, b64)
   return b64
 }
 
-/** 内核就绪后安装中文字体（每次刷新 wasm 进程重建，需重装；声明 cjkFont 的内核才装；失败静默不影响主流程） */
+/** 内核就绪后安装中文字体（wasm 进程每次刷新重建；声明 cjkFont 的内核才装；失败静默不影响主流程）。
+ * 返回时机：优先装完清单前两个字体（InterCJK 主题兜底）即返回让文档尽快打开，其余后台补装；
+ * 内核带 cjkFontKeep（自身把字体持久化在 IndexedDB，跨刷新自动恢复）时装过一次即跳过。 */
 export async function ensureCjkFont(kernel: ShellKernel, bridge: KernelBridge | null): Promise<void> {
-  if (!bridge || !kernelDesc(kernel)?.cjkFont) return
-  for (const weight of ['Regular', 'Bold'] as const) {
-    try {
-      const data = await cjkFontBase64(weight)
-      await bridge('execute', 'font.add', { data, name: `SourceHanSansCN-${weight}.otf` })
-    } catch { /* 兜底失败仅表现为缺字方块 */ }
+  const desc = kernelDesc(kernel)
+  if (!bridge || !desc?.cjkFont) return
+  const mark = `cjk-fonts-ok:${kernel}`
+  if (desc.cjkFontKeep && localStorage.getItem(mark)) return
+  const first = CJK_FONT_FILES.slice(0, 2)
+  const rest = CJK_FONT_FILES.slice(2)
+  // 优先装主题兜底字体，装完即返回（调用方随后 openDoc）
+  if (!(await installFonts(bridge, first))) return
+  if (desc.cjkFontKeep) localStorage.setItem(mark, '1')
+  // 其余字体后台补装，装完缩放往返强制重排（deckcraft 已布局文本不随新字体重排）
+  void (async () => {
+    if (!(await installFonts(bridge, rest))) return
+    await bridge('execute', 'view.zoomOut', {}).catch(() => {})
+    await bridge('execute', 'view.zoomIn', {}).catch(() => {})
+    await bridge('execute', 'view.fit', {}).catch(() => {})
+  })()
+}
+
+/** 并行拉取、逐个安装一批字体，全部成功返回 true（内核侧 font.add 串行处理） */
+async function installFonts(bridge: KernelBridge, files: string[]): Promise<boolean> {
+  let datas: string[]
+  try {
+    datas = await Promise.all(files.map(cjkFontBase64))
+  } catch {
+    return false /* 兜底失败仅表现为缺字方块 */
   }
+  let ok = true
+  for (let i = 0; i < files.length; i++) {
+    try {
+      await bridge('execute', 'font.add', { data: datas[i], name: files[i] })
+    } catch { ok = false /* 单个失败不影响其余字体 */ }
+  }
+  return ok
 }

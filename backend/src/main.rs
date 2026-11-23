@@ -85,6 +85,13 @@ async fn main() -> std::io::Result<()> {
                     .use_etag(true)
                     .redirect_to_slash_directory(),
             )
+            .service(
+                fs::Files::new("/pdfcraft", std::path::Path::new(&static_dir).join("pdfcraft"))
+                    .index_file("index.html")
+                    .prefer_utf8(true)
+                    .use_etag(true)
+                    .redirect_to_slash_directory(),
+            )
             .service(routes::doc::doc_meta)
             .service(routes::doc::doc_proxy)
             .service(routes::save_store::push_latest)

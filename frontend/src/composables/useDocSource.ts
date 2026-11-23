@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export type DocKind = 'docx' | 'xlsx' | 'pptx' | 'unknown'
+export type DocKind = 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'unknown'
 
 const EXT_MAP: Record<string, DocKind> = {
   docx: 'docx',
@@ -10,6 +10,7 @@ const EXT_MAP: Record<string, DocKind> = {
   csv: 'xlsx',
   pptx: 'pptx',
   ppt: 'pptx',
+  pdf: 'pdf',
 }
 
 export function kindOfUrl(raw: string): DocKind {
@@ -50,7 +51,7 @@ export function useDocSource() {
     if (raw.startsWith('/')) {
       const detected = kindOfUrl(raw)
       if (detected === 'unknown') {
-        errorText.value = `暂不支持的文件类型：.${raw.split('#')[0].split('?')[0].split('.').pop() ?? ''}（当前支持 docx / xlsx / pptx）`
+        errorText.value = `暂不支持的文件类型：.${raw.split('#')[0].split('?')[0].split('.').pop() ?? ''}（当前支持 docx / xlsx / pptx / pdf）`
         return false
       }
       remoteUrl.value = raw
@@ -74,7 +75,7 @@ export function useDocSource() {
     const detected = kindOfUrl(raw)
     if (detected === 'unknown') {
       const ext = raw.split('#')[0].split('?')[0].split('.').pop() ?? ''
-      errorText.value = `暂不支持的文件类型：.${ext}（当前支持 docx / xlsx / pptx）`
+      errorText.value = `暂不支持的文件类型：.${ext}（当前支持 docx / xlsx / pptx / pdf）`
       return false
     }
 

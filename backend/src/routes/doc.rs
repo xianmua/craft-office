@@ -31,9 +31,9 @@ pub struct DocMeta {
     pub converted: bool,
 }
 
-/// OOXML：内核直接支持
+/// 内核原生支持的格式：OOXML 三件套 + pdf（pdfcraft 内核直读，无需转换）
 fn is_ooxml(ext: &str) -> bool {
-    matches!(ext, "docx" | "xlsx" | "pptx")
+    matches!(ext, "docx" | "xlsx" | "pptx" | "pdf")
 }
 
 pub(crate) struct Prepared {

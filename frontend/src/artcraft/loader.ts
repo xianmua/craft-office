@@ -17,16 +17,22 @@ import { kernelUrl } from '@/api/base'
 
 export type { DocKind }
 
-/** 各格式对应的内核：docx→wordcraft、xlsx→gridcraft、pptx→deckcraft */
+/** 各格式对应的内核：docx→wordcraft、xlsx→gridcraft、pptx→deckcraft、pdf→pdfcraft */
 export const KERNEL_OF: Partial<Record<DocKind, string>> = {
   docx: 'wordcraft',
   xlsx: 'gridcraft',
   pptx: 'deckcraft',
+  pdf: 'pdfcraft',
+}
+
+/** 各内核 iframe 额外的查询参数：pdfcraft 的 window.pdfcraft 六方法由 ?control 显式开启 */
+const EXTRA_QUERY: Record<string, string> = {
+  pdfcraft: '&control',
 }
 
 /** 内核 iframe 地址；?host=parent 启用 postMessage 宿主桥 */
 export function kernelFrameUrl(kernel: string): string {
-  return `${kernelUrl(`${kernel}/index.html`)}?host=parent`
+  return `${kernelUrl(`${kernel}/index.html`)}?host=parent${EXTRA_QUERY[kernel] ?? ''}`
 }
 
 export interface KernelSavePayload {
