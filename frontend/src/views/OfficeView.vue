@@ -256,7 +256,8 @@ async function load() {
       mode.value = "editor";
       await nextTick();
     } else {
-      preview.value = inspectOoxml(docKind ?? "docx", new Uint8Array(bytes));
+      // pdf 有专属内核必命中上分支，这里只剩 OOXML 三件套 / unknown
+      preview.value = inspectOoxml(docKind === "pdf" ? "docx" : (docKind ?? "docx"), new Uint8Array(bytes));
       mode.value = "preview";
     }
 
@@ -311,7 +312,8 @@ function onKernelDirty(value: boolean) {
 function onKernelFailed(message: string) {
   relay.toParent({ type: "artcraft:failed", error: message });
   MessagePlugin.error(`内核启动失败：${message}`);
-  if (binary.value) {
+  // pdf 非 OOXML 无降级预览，失败直接展示错误页
+  if (binary.value && kind.value !== "pdf") {
     try {
       preview.value = inspectOoxml(
         kind.value === "unknown" ? "docx" : kind.value,
